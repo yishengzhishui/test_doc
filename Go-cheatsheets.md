@@ -33,7 +33,7 @@ package main
 import "fmt"
 
 func main() {
-    fmt.Println("Hello Gophers!")
+	fmt.Println("Hello Gophers!")
 }
 ```
 
@@ -178,36 +178,39 @@ const pi = 3.1415
 [Return to Summary](#summary)
 
 Arithmetic Operators
-| Symbol | Operation | Valid Types |
-|:---------:|:-------------:|:-------------:|
-| `+` | Sum | integers, floats, complex values, strings |
-| `-` | Difference | integers, floats, complex values |
-| `*` | Product | integers, floats, complex values |
-| `/` | Quotient | integers, floats, complex values |
-| `%` | Remainder | integers |
-| `&` | Bitwise AND | integers |
-| `|` | Bitwise OR | integers |
-| `^` | Bitwise XOR | integers |
-| `&^` | Bit clear (AND NOT) | integers |
-| `<<` | Left shift | integer << unsigned integer |
-| `>>` | Right shift | integer >> unsigned integer |
+
+| Symbol |      Operation      |                Valid Types                |
+| :----: | :-----------------: | :---------------------------------------: |
+|  `+`   |         Sum         | integers, floats, complex values, strings |
+|  `-`   |     Difference      |     integers, floats, complex values      |
+|  `*`   |       Product       |     integers, floats, complex values      |
+|  `/`   |      Quotient       |     integers, floats, complex values      |
+|  `%`   |      Remainder      |                 integers                  |
+|  `&`   |     Bitwise AND     |                 integers                  |
+|  `|`   |     Bitwise OR      |                 integers                  |
+|  `^`   |     Bitwise XOR     |                 integers                  |
+|  `&^`  | Bit clear (AND NOT) |                 integers                  |
+|  `<<`  |     Left shift      |        integer << unsigned integer        |
+|  `>>`  |     Right shift     |        integer >> unsigned integer        |
 
 Comparison Operators
-| Symbol | Operation |
-|:---------:|:-------------:|
-| `==` | Equal |
-| `!=` | Not equal |
-| `<` | Less |
-| `<=` | Less or equal |
-| `>` | Greater |
-| `>=` | Greater or equal |
+
+| Symbol |    Operation     |
+| :----: | :--------------: |
+|  `==`  |      Equal       |
+|  `!=`  |    Not equal     |
+|  `<`   |       Less       |
+|  `<=`  |  Less or equal   |
+|  `>`   |     Greater      |
+|  `>=`  | Greater or equal |
 
 Logical Operators
-| Symbol | Operation |
-|:---------:|:-------------:|
-| `&&` | Conditional AND |
-| `||` | Conditional OR |
-| `!` | NOT |
+
+| Symbol |    Operation    |
+| :----: | :-------------: |
+|  `&&`  | Conditional AND |
+|  `||`  | Conditional OR  |
+|  `!`   |       NOT       |
 
 [Return to Summary](#summary)
 
@@ -658,17 +661,17 @@ One of the main parts that make Go attractive is its form to handle with concurr
 ```go
 // Consider a common function, but that function can delay itself because some processing
 func show(from string) {
-	for i := 0; i < 3; i++ {
-		fmt.Printf("%s : %d\n", from, i)
-	}
+for i := 0; i < 3; i++ {
+fmt.Printf("%s : %d\n", from, i)
+}
 }
 
 // In a blocking way...
 func main() {
-	show("blocking1")
-	show("blocking2")
+show("blocking1")
+show("blocking2")
 
-	fmt.Println("done")
+fmt.Println("done")
 }
 /*  blocking1: 0
     blocking1: 1
@@ -676,21 +679,21 @@ func main() {
     blocking2: 0
     blocking2: 1
     blocking2: 2
-    done 
+    done
 */
 
 // Go routines are a function (either declared previously or anonymous) called with the keyword go
 func main() {
-	go show("routine1")
-	go show("routine2")
+go show("routine1")
+go show("routine2")
 
-	go func() {
-		fmt.Println("going")
-	}()
+go func() {
+fmt.Println("going")
+}()
 
-	time.Sleep(time.Second)
+time.Sleep(time.Second)
 
-	fmt.Println("done")
+fmt.Println("done")
 }
 
 /*  Obs: The result will depends of what processes first
@@ -709,11 +712,11 @@ func main() {
 msgs := make(chan string)
 
 go func(channel chan string) {
-    channel <- "ping"
+channel <- "ping"
 }(msgs)
 
 go func(channel chan string) {
-    channel <- "pong"
+channel <- "pong"
 }(msgs)
 
 fmt.Println(<-msgs) // pong
@@ -732,11 +735,11 @@ msgs<-2
 numbers := make(chan int)
 
 go func(sender chan<- int) {
-    sender <- 10
+sender <- 10
 }(numbers)
 
 go func(receiver <-chan int) {
-    fmt.Println(<-receiver) // 10
+fmt.Println(<-receiver) // 10
 }(numbers)
 
 time.Sleep(time.Second)
@@ -747,56 +750,56 @@ c2 := make(chan string)
 
 select {
 case msg1 := <-c1:
-    fmt.Println("received", msg1)
+fmt.Println("received", msg1)
 case msg2 := <-c2:
-    fmt.Println("received", msg2)
+fmt.Println("received", msg2)
 default:
-    fmt.Println("no messages")
+fmt.Println("no messages")
 }
 
 go func() {
-    time.Sleep(1 * time.Second)
-    c1 <- "channel1 : one"
+time.Sleep(1 * time.Second)
+c1 <- "channel1 : one"
 }()
 go func() {
-    time.Sleep(2 * time.Second)
-    c2 <- "channel2 : one"
+time.Sleep(2 * time.Second)
+c2 <- "channel2 : one"
 }()
 
 for i := 0; i < 2; i++ {
-    select {
-    case msg1 := <-c1:
-        fmt.Println("received", msg1)
-    case msg2 := <-c2:
-        fmt.Println("received", msg2)
-    }
+select {
+case msg1 := <-c1:
+fmt.Println("received", msg1)
+case msg2 := <-c2:
+fmt.Println("received", msg2)
+}
 }
 
 /*
-    no messages
-    received channel1: one
-    received channel2: one
+   no messages
+   received channel1: one
+   received channel2: one
 */
 
 // Channels can be closed and iterated
 channel := make(chan int, 5)
 
 for i := 0; i < 5; i++ {
-    channel <- i
+channel <- i
 }
 
 close(channel)
 
 for value := range channel {
-    fmt.Println(value)
+fmt.Println(value)
 }
 
 /*
-    0
-    1
-    2
-    3
-    4
+   0
+   1
+   2
+   3
+   4
 */
 ```
 
