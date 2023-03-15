@@ -566,15 +566,672 @@ func main() {
 
 
 
+## 指针
+
+Go 拥有指针。指针保存了值的**内存地址**。
+
+类型 `*T` 是指向 `T` 类型值的指针。其零值为 `nil`，如果我们拥有一个类型 T，那么以 T 作为基类型的指针类型为 *T。
+
+```go
+var p *int
+var a *T
+```
+
+`&` 操作符会生成一个指向其操作数的指针。&符号称为取地址符号
+
+```
+i := 42
+p = &i
+```
+
+`*` 操作符表示指针指向的底层值。通过指针变量读取或修改其指向的内存地址上的变量值，这个操作被称为指针的解引用（dereference）。
+
+```
+fmt.Println(*p) // 通过指针 p 读取 i
+*p = 21         // 通过指针 p 设置 i
+```
+
+这也就是通常所说的“间接引用”或“重定向”。
+
+```go
+package main
+
+import "fmt"
+
+func zeroval(ival int) {
+    ival = 0
+}
+
+//参数为int指针
+func zeroptr(iptr *int) {
+    *iptr = 0 //通过指针设置值
+}
+
+func main() {
+	i, j := 42, 2701
+
+	p := &i         // 指向 i
+	fmt.Println(*p) // 通过指针读取 i 的值
+	*p = 21         // 通过指针设置 i 的值
+	fmt.Println(i)  // 查看 i 的值
+
+	p = &j         // 指向 j
+	*p = *p / 37   // 通过指针对 j 进行除法运算
+	fmt.Println(j) // 查看 j 的值
+  
+    i := 1
+    fmt.Println("initial:", i)
+
+    zeroval(i)
+    fmt.Println("zeroval:", i)
+
+    zeroptr(&i)
+    fmt.Println("zeroptr:", i)
+
+    fmt.Println("pointer:", &i)
+}
+// result
+42
+21
+73
+
+initial: 1
+zeroval: 1
+zeroptr: 0
+pointer: 0x42131100
+
+
+```
+
+### 二级指针
+
+```go
+
+package main
+
+func main() {
+    var a int = 5
+    var p1 *int = &a
+    println(*p1) // 5
+    var b int = 55
+    var p2 *int = &b
+    println(*p2) // 55
+
+    var pp **int = &p1
+    println(**pp) // 5
+    pp = &p2      
+    println(**pp) // 55
+}  
+------------------
+
+package main
+
+func foo(pp **int) {
+    var b int = 55
+    var p1 *int = &b
+    (*pp) = p1
+}
+
+func main() {
+    var a int = 5
+    var p *int = &a
+    println(*p) // 5
+    foo(&p)
+    println(*p) // 55
+}
+```
+
+## 字符串和rune类型
+
+Go语言中的字符串是一个只读的byte类型的切片。在Go语言当中，字符的概念被称为 `rune` - 它是一个表示 Unicode 编码的整数。
 
 
 
+```go
+package main
+
+import (
+    "fmt"
+    "unicode/utf8"
+)
+
+func main() {
+
+    const s = "สวัสดี"
+
+    fmt.Println("Len:", len(s))
+
+    for i := 0; i < len(s); i++ {
+        fmt.Printf("%x ", s[i])
+    }
+    fmt.Println()
+
+    fmt.Println("Rune count:", utf8.RuneCountInString(s))
+
+    for idx, runeValue := range s {
+        fmt.Printf("%#U starts at %d\n", runeValue, idx)
+    }
+
+    fmt.Println("\nUsing DecodeRuneInString")
+    for i, w := 0, 0; i < len(s); i += w {
+        runeValue, width := utf8.DecodeRuneInString(s[i:])
+        fmt.Printf("%#U starts at %d\n", runeValue, i)
+        w = width
+
+        examineRune(runeValue)
+    }
+}
+
+func examineRune(r rune) {
+
+    if r == 't' {
+        fmt.Println("found tee")
+    } else if r == 'ส' {
+        fmt.Println("found so sua")
+    }
+}
+
+Len: 18
+e0 b8 aa e0 b8 a7 e0 b8 b1 e0 b8 aa e0 b8 94 e0 b8 b5
+Rune count: 6
+U+0E2A 'ส' starts at 0
+U+0E27 'ว' starts at 3
+U+0E31 'ั' starts at 6
+U+0E2A 'ส' starts at 9
+U+0E14 'ด' starts at 12
+U+0E35 'ี' starts at 15
+Using DecodeRuneInString
+U+0E2A 'ส' starts at 0
+found so sua
+U+0E27 'ว' starts at 3
+U+0E31 'ั' starts at 6
+U+0E2A 'ส' starts at 9
+found so sua
+U+0E14 'ด' starts at 12
+U+0E35 'ี' starts at 15
+
+```
+
+1)string 类型的数据是不可变的，提高了字符串的并发安全性和存储利用率。Go 语言规定，字符串类型的值在它的生命周期内是不可改变的。
+
+```go
+var s string = "hello"
+s[0] = 'k'   // 错误：字符串的内容是不可改变的
+s = "gopher" // ok
+```
+
+2)原生支持“所见即所得”的原始字符串，大大降低构造多行字符串时的心智负担
+
+通过一对反引号原生支持构造“所见即所得”的原始字符串（Raw String）。而且，Go 语言原始字符串中的任意转义字符都不会起到转义的作用
+
+```go
+var s string = `         ,_---~~~~~----._
+    _,,_,*^____      _____*g*\"*,--,
+   / __/ /'     ^.  /      \ ^@q   f
+  [  @f | @))    |  | @))   l  0 _/
+   \/   \~____ / __ \_____/     \
+    |           _l__l_           I
+    }          [______]           I
+    ]            | | |            |
+    ]             ~ ~             |
+    |                            |
+     |                           |`
+fmt.Println(s)
+```
+
+3)对非 ASCII 字符提供原生支持，消除了源码在不同环境下显示乱码的可能。Go 语言源文件默认采用的是 Unicode 字符集，
+
+Go 字符串的组成
+
+Go 语言在看待 Go 字符串组成这个问题上，有两种视角。
+
+一种是**字节视角**，也就是和所有其它支持字符串的主流语言一样，Go 语言中的字符串值也是一个**可空的字节序列**，字节序列中的字节个数称为该字符串的长度。一个个的字节只是孤立数据，不表意。
+
+```go
+var s = "中国人"
+fmt.Printf("the length of s = %d\n", len(s)) // 9
+
+for i := 0; i < len(s); i++ {
+  fmt.Printf("0x%x ", s[i]) // 0xe4 0xb8 0xad 0xe5 0x9b 0xbd 0xe4 0xba 0xba
+}
+fmt.Printf("\n")
+```
+
+另外一个**字符视角**，也就是字符串是由一个可空的字符序列构成。这个时候我们再看下面代码，以 0x4e2d 为例，它是汉字“中”在 Unicode 字符集表中的码点（Code Point）。
+
+```go
+var s = "中国人"
+fmt.Println("the character count in s is", utf8.RuneCountInString(s)) // 3
+
+for _, c := range s {
+  fmt.Printf("0x%x ", c) // 0x4e2d 0x56fd 0x4eba
+}
+fmt.Printf("\n")
+```
+
+### 码点
+
+Unicode 字符集中的每个字符，都被分配了统一且唯一的字符编号。所谓 Unicode 码点，就是指将 Unicode 字符集中的所有字符“排成一队”，字符在这个“队伍”中的位次，就是它在 Unicode 字符集中的码点。也就说，一个码点唯一对应一个字符。“码点”的概念和我们马上要讲的 rune 类型有很大关系。
+
+#### rune 类型与字符字面值
+
+Go 使用 rune 这个类型来表示一个 Unicode 码点。rune 本质上是 int32 类型的别名类型，它与 int32 类型是完全等价的。
+
+由于一个 Unicode 码点唯一对应一个 Unicode 字符。所以我们可以说，**一个 rune 实例就是一个 Unicode 字符，一个 Go 字符串也可以被视为 rune 实例的集合**。我们可以通过字符字面值来初始化一个 rune 变量。
+
+```go
+"abc\n"
+"中国人"
+"\u4e2d\u56fd\u4eba" // 中国人
+"\U00004e2d\U000056fd\U00004eba" // 中国人
+"中\u56fd\u4eba" // 中国人，不同字符字面值形式混合在一起
+"\xe4\xb8\xad\xe5\x9b\xbd\xe4\xba\xba" // 十六进制表示的字符串字面值：中国人。  这个字节序列实际上是“中国人”这个 Unicode 字符串的 UTF-8 编码值
+```
+
+#### UTF-8 编码方案
+
+UTF-8 编码解决的是 Unicode 码点值在计算机中如何存储和表示（位模式）的问题。那你可能会说，码点唯一确定一个 Unicode 字符，直接用码点值不行么？
+
+和 UTF-32 方案不同，UTF-8 方案使用变长度字节，对 Unicode 字符的码点进行编码。编码采用的字节数量与 Unicode 字符在码点表中的序号有关：表示序号（码点）小的字符使用的字节数量少，表示序号（码点）大的字符使用的字节数多。
+
+#### Go 字符串类型的内部表示
+
+**string 类型其实是一个“描述符”，它本身并不真正存储字符串数据，而仅是由一个指向底层存储的指针和字符串的长度字段组成的**
+
+![img](/Users/wangxing/Desktop/go/Go基础.assets/6c94a2f5a0f942e361792b26f5abfa28.jpg)
+
+了解了 string 类型的实现原理后，我们还可以得到这样一个结论，那就是我们直接将 string 类型通过函数 / 方法参数传入也不会带来太多的开销。**因为传入的仅仅是一个“描述符”**，而不是真正的字符串数据。
+
+#### Go 字符串类型的常见操作
+
+由于字符串的不可变性，针对字符串，我们更多是尝试对其进行读取
+
+##### 第一个操作：下标操作。
+
+在字符串的实现中，真正存储数据的是底层的数组。字符串的下标操作本质上等价于底层数组的下标操作。
+
+```go
+var s = "中国人"
+fmt.Printf("0x%x\n", s[0]) // 0xe4：字符“中” utf-8编码的第一个字节
+```
+
+我们可以看到，通过下标操作，我们获取的是字符串中**特定下标上的字节**，而不是字符
+
+##### 第二个操作：字符迭代。
+
+Go 有两种迭代形式：常规 for 迭代与 for range 迭代。
+
+通过常规 **for 迭代**对字符串进行的操作是一种**字节视角**的迭代，每轮迭代得到的的结果都是组成字符串内容的一个字节，以及该字节所在的下标值，这也等价于对字符串底层数组的迭代，比如下面代码：
+
+```go
+var s = "中国人"
+
+for i := 0; i < len(s); i++ {
+  fmt.Printf("index: %d, value: 0x%x\n", i, s[i])
+}
+//print
+index: 0, value: 0xe4
+index: 1, value: 0xb8
+index: 2, value: 0xad
+index: 3, value: 0xe5
+index: 4, value: 0x9b
+index: 5, value: 0xbd
+index: 6, value: 0xe4
+index: 7, value: 0xba
+index: 8, value: 0xba
+```
+
+for range 迭代
+
+```go
+var s = "中国人"
+
+for i, v := range s {
+    fmt.Printf("index: %d, value: 0x%x\n", i, v)
+}
+//print
+index: 0, value: 0x4e2d
+index: 3, value: 0x56fd
+index: 6, value: 0x4eba
+```
+
+我们看到，通过 for range 迭代，我们每轮迭代得到的是字符串中 Unicode 字符的码点值，以及该字符在字符串中的偏移值。
+
+##### 第三个操作：字符串连接
+
+```go
+s := "Rob Pike, "
+s = s + "Robert Griesemer, "
+s += " Ken Thompson"
+
+fmt.Println(s) // Rob Pike, Robert Griesemer, Ken Thompson
+```
+
+虽然通过 +/+= 进行字符串连接的开发体验是最好的，但连接性能就未必是最快的了。除了这个方法外，Go 还提供了 strings.Builder、strings.Join、fmt.Sprintf 等函数来进行字符串连接操作。
+
+> 如果能知道拼接字符串的个数，那么使用bytes.Buffer和strings.Builder的Grows申请空间后，性能是最好的；
+>
+> 如果不能确定长度，那么bytes.Buffer和strings.Builder也比“+”和fmt.Sprintf性能好很多。 
+
+>  bytes.Buffer与strings.Builder，strings.Builder更合适，因为bytes.Buffer 转化为字符串时重新申请了一块空间，存放生成的字符串变量，而 strings.Builder 直接将底层的 []byte 转换成了字符串类型返回了回来。 
+>
+>  bytes.Buffer 的注释中还特意提到了： To build strings more efficiently, see the strings.Builder type.
+
+##### 第四个操作：字符串比较
+
+Go 采用字典序的比较策略，分别从**每个字符串的起始处**，开始逐个**字节**地对两个字符串类型变量进行比较。
+
+当两个字符串之间出现了第一个不相同的元素，比较就结束了，这两个元素的比较结果就会做为串最终的比较结果。如果出现两个**字符串长度不同**的情况，长度比较小的字符串会**用空元素补**齐，空元素比其他非空元素都小。
+
+```go
+func main() {
+        // ==
+        s1 := "世界和平"
+        s2 := "世界" + "和平"
+        fmt.Println(s1 == s2) // true
+
+        // !=
+        s1 = "Go"
+        s2 = "C"
+        fmt.Println(s1 != s2) // true
+
+        // < and <=
+        s1 = "12345"
+        s2 = "23456"
+        fmt.Println(s1 < s2)  // true
+        fmt.Println(s1 <= s2) // true
+
+        // > and >=
+        s1 = "12345"
+        s2 = "123"
+        fmt.Println(s1 > s2)  // true
+        fmt.Println(s1 >= s2) // true
+}
+```
 
 
 
+## 结构体（struct）
+
+Go 的*结构体(struct)* 是带类型的字段(fields)集合。 这在组织数据时非常有用。
+
+```go
+package main
+
+import "fmt"
+
+type person struct {
+    name string
+    age  int
+}
+
+func newPerson(name string) *person {
+
+    p := person{name: name}
+    p.age = 42
+    return &p
+}
+
+func main() {
+
+    fmt.Println(person{"Bob", 20})
+
+    fmt.Println(person{name: "Alice", age: 30})
+
+    fmt.Println(person{name: "Fred"}) //省略的字段将被初始化为零值
+
+    fmt.Println(&person{name: "Ann", age: 40}) //& 前缀生成一个结构体指针
+
+    fmt.Println(newPerson("Jon"))
+
+    s := person{name: "Sean", age: 50}
+    fmt.Println(s.name) // Sean
+
+    sp := &s
+    fmt.Println(sp.age) //50    指针会被自动解引用
+
+    sp.age = 51
+    fmt.Println(sp.age)
+}
+// result
+{Bob 20}
+{Alice 30}
+{Fred 0}
+&{Ann 40}
+&{Jon 42}
+Sean
+50
+51
+```
 
 
 
+### 结构体方法
+
+使用指针接收者的原因有二：
+
+首先，方法能够修改其接收者指向的值。
+
+其次，这样可以避免在每次调用方法时复制该值。若值的类型为大型结构体时，这样做会更加高效。
+
+值/指针接收器都可以用值或者指针调用
+
+```go
+package main
+
+import "fmt"
+
+type rect struct {
+    width, height int
+}
+
+//指针接收器，可以直接修改结构体的值
+func (r *rect) area() int {
+    return r.width * r.height
+}
+// 值接收器 对原结构体的副本（拷贝）操作
+func (r rect) perim() int {
+    return 2*r.width + 2*r.height
+}
+
+func main() {
+    r := rect{width: 10, height: 5}
+
+    fmt.Println("area: ", r.area())
+    fmt.Println("perim:", r.perim())
+
+    rp := &r
+    fmt.Println("area: ", rp.area())
+    fmt.Println("perim:", rp.perim())
+}
+//result
+area:  50
+perim: 30
+area:  50
+perim: 30
+
+------------------------------
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+type Vertex struct {
+	X, Y float64
+}
+
+func (v Vertex) Abs() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y)
+}
+
+func (v *Vertex) Scale(f float64) {
+	v.X = v.X * f
+	v.Y = v.Y * f
+}
+
+func main() {
+	v := Vertex{3, 4}
+	v.Scale(10)
+	fmt.Println(v.Abs())   // 50
+}
+```
+
+
+
+## 接口
+
+方法签名的集合叫做：_接口(Interfaces)_。
+
+```go
+package main
+
+import (
+    "fmt"
+    "math"
+)
+
+type geometry interface {
+    area() float64
+    perim() float64
+}
+
+type rect struct {
+    width, height float64
+}
+type circle struct {
+    radius float64
+}
+
+func (r rect) area() float64 {
+    return r.width * r.height
+}
+func (r rect) perim() float64 {
+    return 2*r.width + 2*r.height
+}
+
+func (c circle) area() float64 {
+    return math.Pi * c.radius * c.radius
+}
+func (c circle) perim() float64 {
+    return 2 * math.Pi * c.radius
+}
+//如果一个变量实现了某个接口，我们就可以调用指定接口中的方法。 这儿有一个通用的 measure 函数，我们可以通过它来使用所有的 geometry。
+func measure(g geometry) {
+    fmt.Println(g)
+    fmt.Println(g.area())
+    fmt.Println(g.perim())
+}
+
+func main() {
+    r := rect{width: 3, height: 4}
+    c := circle{radius: 5}
+//结构体类型 circle 和 rect 都实现了 geometry 接口， 所以我们可以将其实例作为 measure 的参数
+    measure(r)
+    measure(c)
+}
+
+------------------
+package main
+
+import (
+	"fmt"
+	"math"
+)
+
+type I interface {
+	M()
+}
+
+type T struct {
+	S string
+}
+
+func (t *T) M() {
+	fmt.Println(t.S)
+}
+
+type F float64
+
+func (f F) M() {
+	fmt.Println(f)
+}
+
+func main() {
+	var i I
+
+	i = &T{"Hello"}
+	describe(i)
+	i.M()
+
+	i = F(math.Pi)
+	describe(i)
+	i.M()
+}
+
+func describe(i I) {
+	fmt.Printf("(%v, %T)\n", i, i)
+}
+// result
+(&{Hello}, *main.T)
+Hello
+(3.141592653589793, main.F)
+3.141592653589793
+```
+
+## Embedding 嵌入
+
+Go支持对于结构体(struct)和接口(interfaces)的 *嵌入(embedding)* 以表达一种更加无缝的 *组合(composition)* 类型
+
+```go
+package main
+
+import "fmt"
+
+type base struct {
+    num int
+}
+
+func (b base) describe() string {
+    return fmt.Sprintf("base with num=%v", b.num)
+}
+//一个 container 嵌入 了一个 base. 一个嵌入看起来像一个没有名字的字段
+type container struct {
+    base
+    str string
+}
+
+func main() {
+//当创建含有嵌入的结构体，必须对嵌入进行显式的初始化； 在这里使用嵌入的类型当作字段的名字
+    co := container{
+        base: base{
+            num: 1,
+        },
+        str: "some name",
+    }
+
+    fmt.Printf("co={num: %v, str: %v}\n", co.num, co.str)
+
+    fmt.Println("also num:", co.base.num)
+//由于 container 嵌入了 base，因此base的方法 也成为了 container 的方法。在这里我们直接在 co 上 调用了一个从 base 嵌入的方法。
+    fmt.Println("describe:", co.describe())
+
+    type describer interface {
+        describe() string
+    }
+//  可以使用带有方法的嵌入结构来赋予接口实现到其他结构上。 
+//  因为嵌入了 base ，在这里我们看到 container 也实现了 describer 接口。
+    var d describer = co
+    fmt.Println("describer:", d.describe())
+}
+
+// result
+co={num: 1, str: some name}
+also num: 1
+describe: base with num=1
+describer: base with num=1
+```
 
 
 
