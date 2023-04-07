@@ -1233,6 +1233,87 @@ describe: base with num=1
 describer: base with num=1
 ```
 
+## 错误处理
+在 Go 语言中，如果一个类型实现了 Error() 方法，那么当该类型的实例作为错误值被返回时，将自动调用其 Error() 方法来生成错误信息的字符串表示。
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+## 在函数 f1 中，如果参数 arg 的值等于 42，则返回一个错误对象。
+## 这里使用了 Go 语言内置的 errors.New 函数来创建一个新的错误对象。
+func f1(arg int) (int, error) {
+    if arg == 42 {
+
+        return -1, errors.New("can't work with 42")
+
+    }
+
+    return arg + 3, nil
+}
+
+type argError struct {
+    arg  int
+    prob string
+}
+
+func (e *argError) Error() string {
+    return fmt.Sprintf("%d - %s", e.arg, e.prob)
+}
+
+func f2(arg int) (int, error) {
+    if arg == 42 {
+
+        return -1, &argError{arg, "can't work with it"}
+    }
+    return arg + 3, nil
+}
+
+func main() {
+
+    for _, i := range []int{7, 42} {
+        if r, e := f1(i); e != nil {
+            fmt.Println("f1 failed:", e)
+        } else {
+            fmt.Println("f1 worked:", r)
+        }
+    }
+    for _, i := range []int{7, 42} {
+        if r, e := f2(i); e != nil {
+            fmt.Println("f2 failed:", e)
+        } else {
+            fmt.Println("f2 worked:", r)
+        }
+    }
+
+# 类型断言e.(*argError)将错误值转换为类型为*argError的指针。
+# 如果转换成功，则变量ae保存了这个指针，同时变量ok的值为true。
+#在这种情况下，代码会输出ae.arg和ae.prob两个属性的值，即错误值中记录的参数值和错误信息。
+    _, e := f2(42)
+    if ae, ok := e.(*argError); ok {
+        fmt.Println(ae.arg)
+        fmt.Println(ae.prob)
+    }
+}
+```
+在这个例子中，我们定义了一个自定义的错误类型 argError，并在其上实现了 Error() 方法，用于将错误信息格式化为一个字符串。
+当在 f2 函数中返回该类型的指针时，由于它实现了 Error() 方法，所以在 fmt.Println() 函数打印错误信息时，会自动调用其 Error() 方法来生成错误信息字符串。
+
+`argError`类型和`*argError`类型 有啥区别
+`argError`和`*argError`分别表示不同的类型。`argError`是一个结构体类型，它包含了两个字段arg和prob。而`*argError`表示一个指向argError类型值的指针类型。
+
+具体来说，`argError`类型表示的是一个值，这个值是argError结构体的实例，而`*argError`类型表示的是一个指针，这个指针指向一个argError结构体的实例。
+
+Error() 函数是 `*argError` 类型的指针接收器方法。在 Go 中，一个类型的指针可以调用该类型的所有方法，同时也可以调用该类型的指针接收器方法。因此，在这个例子中，`*argError` 类型的指针可以调用 Error() 方法，而不需要使用 & 运算符来解引用指针。
+
+## 类型断言
+Go的类型断言是指在运行时动态地判断一个接口值所持有的值的类型是否为某个特定的类型。类型断言的语法形式如下：
+`x.(T)`
+其中，x 是一个接口值，T 是一个类型。如果 x 所持有的值的类型是 T，则类型断言返回 x 中的值和 true，否则返回零值和 false。
+
+
 
 
 
