@@ -32,11 +32,10 @@ a, b, c := 12, 'A', "hello"
 
 Go 语言的两类变量。
 
-一类称为**包级变量 (package varible)**，也就是在包级别可见的变量。如果是导出变量（大写字母开头），那么这个包级变量也可以被视为全局变量；**包级变量只能使用带有 var 关键字的变量声明形式**，不能使用短变量声明形式。
+一类称为**包级变量 (package varible)**，也就是在包级别可见的变量。如果是导出变量（大写字母开头），那么这个包级变量也可以被视为全局变量；**包级变量只能使用带有 var 关键字的变量声明形式**
+，不能使用短变量声明形式。
 
 另一类则是**局部变量 (local varible)**，也就是 Go 函数或方法体内声明的变量，仅在函数或方法体内可见。
-
-
 
 ## 常量
 
@@ -66,15 +65,11 @@ func main() {
 
 `const` 用于声明一个常量
 
-
-
 ## If/Else
 
 在 Go 中，条件语句的圆括号不是必需的，但是花括号是必需的。
 
 **在条件语句之前可以有一个声明语句；在这里声明的变量可以在这个语句所有的条件分支中使用**。
-
-
 
 ```go
 package main
@@ -166,8 +161,6 @@ I'm an int
 Don't know type string
 ```
 
-
-
 ## 数组
 
 *数组* 是一个具有编号且长度固定的元素序列
@@ -205,8 +198,6 @@ values[1:3] // {2, 3, } 不包含尾部
 len(values) // 5
 }
 ```
-
-
 
 ## 切片
 
@@ -326,8 +317,6 @@ prs: false
 map: map[foo:1 bar:2]
 ```
 
-
-
 ## For循环
 
 ```go
@@ -418,8 +407,6 @@ key: b
 1 111
 ```
 
-
-
 ## 函数：function
 
 参数传递
@@ -470,8 +457,6 @@ func main() {
     fmt.Println(c)
 }
 ```
-
-
 
 可变参数函数
 
@@ -563,8 +548,6 @@ func main() {
     fmt.Println(fib(7))
 }
 ```
-
-
 
 ## 指针
 
@@ -684,8 +667,6 @@ func main() {
 ## 字符串和rune类型
 
 Go语言中的字符串是一个只读的byte类型的切片。在Go语言当中，字符的概念被称为 `rune` - 它是一个表示 Unicode 编码的整数。
-
-
 
 ```go
 package main
@@ -811,13 +792,15 @@ fmt.Printf("\n")
 
 ### 码点
 
-Unicode 字符集中的每个字符，都被分配了统一且唯一的字符编号。所谓 Unicode 码点，就是指将 Unicode 字符集中的所有字符“排成一队”，字符在这个“队伍”中的位次，就是它在 Unicode 字符集中的码点。也就说，一个码点唯一对应一个字符。“码点”的概念和我们马上要讲的 rune 类型有很大关系。
+Unicode 字符集中的每个字符，都被分配了统一且唯一的字符编号。所谓 Unicode 码点，就是指将 Unicode 字符集中的所有字符“排成一队”，字符在这个“队伍”中的位次，就是它在 Unicode
+字符集中的码点。也就说，一个码点唯一对应一个字符。“码点”的概念和我们马上要讲的 rune 类型有很大关系。
 
 #### rune 类型与字符字面值
 
 Go 使用 rune 这个类型来表示一个 Unicode 码点。rune 本质上是 int32 类型的别名类型，它与 int32 类型是完全等价的。
 
-由于一个 Unicode 码点唯一对应一个 Unicode 字符。所以我们可以说，**一个 rune 实例就是一个 Unicode 字符，一个 Go 字符串也可以被视为 rune 实例的集合**。我们可以通过字符字面值来初始化一个 rune 变量。
+由于一个 Unicode 码点唯一对应一个 Unicode 字符。所以我们可以说，**一个 rune 实例就是一个 Unicode 字符，一个 Go 字符串也可以被视为 rune 实例的集合**。我们可以通过字符字面值来初始化一个 rune
+变量。
 
 ```go
 "abc\n"
@@ -832,7 +815,8 @@ Go 使用 rune 这个类型来表示一个 Unicode 码点。rune 本质上是 in
 
 UTF-8 编码解决的是 Unicode 码点值在计算机中如何存储和表示（位模式）的问题。那你可能会说，码点唯一确定一个 Unicode 字符，直接用码点值不行么？
 
-和 UTF-32 方案不同，UTF-8 方案使用变长度字节，对 Unicode 字符的码点进行编码。编码采用的字节数量与 Unicode 字符在码点表中的序号有关：表示序号（码点）小的字符使用的字节数量少，表示序号（码点）大的字符使用的字节数多。
+和 UTF-32 方案不同，UTF-8 方案使用变长度字节，对 Unicode 字符的码点进行编码。编码采用的字节数量与 Unicode
+字符在码点表中的序号有关：表示序号（码点）小的字符使用的字节数量少，表示序号（码点）大的字符使用的字节数多。
 
 #### Go 字符串类型的内部表示
 
@@ -911,9 +895,9 @@ fmt.Println(s) // Rob Pike, Robert Griesemer, Ken Thompson
 
 > 如果能知道拼接字符串的个数，那么使用bytes.Buffer和strings.Builder的Grows申请空间后，性能是最好的；
 >
-> 如果不能确定长度，那么bytes.Buffer和strings.Builder也比“+”和fmt.Sprintf性能好很多。 
+> 如果不能确定长度，那么bytes.Buffer和strings.Builder也比“+”和fmt.Sprintf性能好很多。
 
->  bytes.Buffer与strings.Builder，strings.Builder更合适，因为bytes.Buffer 转化为字符串时重新申请了一块空间，存放生成的字符串变量，而 strings.Builder 直接将底层的 []byte 转换成了字符串类型返回了回来。 
+> bytes.Buffer与strings.Builder，strings.Builder更合适，因为bytes.Buffer 转化为字符串时重新申请了一块空间，存放生成的字符串变量，而 strings.Builder 直接将底层的 []byte 转换成了字符串类型返回了回来。
 >
 >  bytes.Buffer 的注释中还特意提到了： To build strings more efficiently, see the strings.Builder type.
 
@@ -948,8 +932,6 @@ func main() {
         fmt.Println(s1 >= s2) // true
 }
 ```
-
-
 
 ## 结构体（struct）
 
@@ -1003,8 +985,6 @@ Sean
 50
 51
 ```
-
-
 
 ### 结构体方法
 
@@ -1077,8 +1057,6 @@ func main() {
 	fmt.Println(v.Abs())   // 50
 }
 ```
-
-
 
 ## 接口
 
@@ -1234,7 +1212,9 @@ describer: base with num=1
 ```
 
 ## 错误处理
+
 在 Go 语言中，如果一个类型实现了 Error() 方法，那么当该类型的实例作为错误值被返回时，将自动调用其 Error() 方法来生成错误信息的字符串表示。
+
 ```go
 package main
 
@@ -1298,25 +1278,189 @@ func main() {
     }
 }
 ```
-在这个例子中，我们定义了一个自定义的错误类型 argError，并在其上实现了 Error() 方法，用于将错误信息格式化为一个字符串。
-当在 f2 函数中返回该类型的指针时，由于它实现了 Error() 方法，所以在 fmt.Println() 函数打印错误信息时，会自动调用其 Error() 方法来生成错误信息字符串。
+
+在这个例子中，我们定义了一个自定义的错误类型 argError，并在其上实现了 Error() 方法，用于将错误信息格式化为一个字符串。 当在 f2 函数中返回该类型的指针时，由于它实现了 Error() 方法，所以在
+fmt.Println() 函数打印错误信息时，会自动调用其 Error() 方法来生成错误信息字符串。
 
 `argError`类型和`*argError`类型 有啥区别
 `argError`和`*argError`分别表示不同的类型。`argError`是一个结构体类型，它包含了两个字段arg和prob。而`*argError`表示一个指向argError类型值的指针类型。
 
 具体来说，`argError`类型表示的是一个值，这个值是argError结构体的实例，而`*argError`类型表示的是一个指针，这个指针指向一个argError结构体的实例。
 
-Error() 函数是 `*argError` 类型的指针接收器方法。在 Go 中，一个类型的指针可以调用该类型的所有方法，同时也可以调用该类型的指针接收器方法。因此，在这个例子中，`*argError` 类型的指针可以调用 Error() 方法，而不需要使用 & 运算符来解引用指针。
+Error() 函数是 `*argError` 类型的指针接收器方法。在 Go 中，一个类型的指针可以调用该类型的所有方法，同时也可以调用该类型的指针接收器方法。因此，在这个例子中，`*argError` 类型的指针可以调用 Error()
+方法，而不需要使用 & 运算符来解引用指针。
 
 ## 类型断言
+
 Go的类型断言是指在运行时动态地判断一个接口值所持有的值的类型是否为某个特定的类型。类型断言的语法形式如下：
 `x.(T)`
 其中，x 是一个接口值，T 是一个类型。如果 x 所持有的值的类型是 T，则类型断言返回 x 中的值和 true，否则返回零值和 false。
 
+## 协程(goroutine)
 
+协程(goroutine) 是轻量级的执行线程。 在 Go 中，协程（Goroutine）是轻量级的执行线程，它由 Go 运行时（Go runtime）管理。协程的执行类似于线程，但它们的创建和销毁要比线程更快，并且它们占用的内存更少。
 
+要创建一个协程，在 Go 中只需要在函数调用前添加 go 关键字即可
 
+```go
+package main
 
+import (
+    "fmt"
+    "time"
+)
+
+func f(from string) {
+    for i := 0; i < 3; i++ {
+        fmt.Println(from, ":", i)
+    }
+}
+
+func main() {
+
+    f("direct")
+
+    go f("goroutine")
+
+    go func(msg string) {
+        fmt.Println(msg)
+    }("going")
+
+    time.Sleep(time.Second)
+    fmt.Println("done")
+}
+```
+
+这段代码创建了两个协程（goroutine），一个在主函数中通过go关键字调用f()函数创建，另一个是通过匿名函数创建。f()
+函数是一个简单的循环，打印出三个数值。匿名函数只打印一个字符串。由于协程运行在独立的线程中，因此它们可能不按照特定的顺序运行。 最后，使用time.Sleep()函数使主线程休眠一秒钟，以确保协程有足够的时间完成执行。
+
+## 通道(Channels)
+通道(channels) 是连接多个协程的管道。 你可以从一个协程将值发送到通道，然后在另一个协程中接收。
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+// 使用 make(chan val-type) 创建一个新的通道。 通道类型就是他们需要传递值的类型。
+    messages := make(chan string)
+// 使用 channel <- 语法 发送 一个新的值到通道中。 这里我们在一个新的协程中发送 "ping" 到上面创建的 messages 通道中。
+    go func() { messages <- "ping" }()
+// 使用 <-channel 语法从通道中 接收 一个值。 这里我们会收到在上面发送的 "ping" 消息并将其打印出来。
+    msg := <-messages
+    fmt.Println(msg)
+}
+```
+默认发送和接收操作是阻塞的，直到发送方和接收方都就绪。 这个特性允许我们，不使用任何其它的同步操作， 就可以在程序结尾处等待消息 "ping"。
+
+### 通道缓冲
+
+默认情况下，通道是**无缓冲**的，这意味着只有对应的接收（<- chan） 通道准备好接收时，才允许进行发送（chan <-）。 有缓冲通道 允许在没有**对应接收者**的情况下，缓存一定数量的值。
+在这种情况下，发送者可以发送到通道而不会被阻塞，直到缓冲区填满。同样地，接收者可以从通道接收数据而不会被阻塞，直到缓冲区为空。
+```go
+package main
+
+import "fmt"
+
+func main() {
+//make 了一个字符串通道，最多允许缓存 2 个值
+    messages := make(chan string, 2)
+
+    messages <- "buffered"
+    messages <- "channel"
+
+    fmt.Println(<-messages)
+    fmt.Println(<-messages)
+}
+```
+
+在使用通道时，通常需要将它们与goroutine一起使用，以便可以在不同的goroutine之间发送和接收数据。可以在goroutine内部使用select语句，从多个通道接收数据。
+```go
+select {
+case <- ch1:
+    // 接收来自ch1的数据
+case <- ch2:
+    // 接收来自ch2的数据
+default:
+    // 没有通道准备好，执行默认操作
+}
+```
+select语句可以等待多个通道中的任何一个准备好接收数据。如果没有通道准备好，select语句就会等待。可以使用default语句指定在没有通道准备好时要执行的默认操作。
+ 
+### 通道方向
+当使用通道作为函数的参数时，你可以指定这个通道是否为只读或只写。 该特性可以提升程序的类型安全。
+通道可以是单向的或双向的。单向通道限制了通道的操作方向，即只能发送或只能接收。
+
+```go
+package main
+
+import "fmt"
+//ping 函数定义了一个只能发送数据的（只写）通道。 
+//尝试从这个通道接收数据会是一个编译时错误。
+func ping(pings chan<- string, msg string) {
+    pings <- msg
+}
+//pong 函数接收两个通道，
+// pings 仅用于接收数据（只读），pongs 仅用于发送数据（只写）。
+func pong(pings <-chan string, pongs chan<- string) {
+    msg := <-pings
+    pongs <- msg
+}
+
+func main() {
+    pings := make(chan string, 1)
+    pongs := make(chan string, 1)
+    ping(pings, "passed message")
+    pong(pings, pongs)
+    fmt.Println(<-pongs)
+}
+```
+### 超时操作
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+
+//这里是使用 select 实现一个超时操作。
+//res := <- c1 等待结果，<-time.After 等待超时（1秒钟）以后发送的值。
+//由于 select 默认处理第一个已准备好的接收操作，
+//因此如果操作耗时超过了允许的 1 秒的话，将会执行超时 case。
+    c1 := make(chan string, 1)
+    go func() {
+        time.Sleep(2 * time.Second)
+        c1 <- "result 1"
+    }()
+
+    select {
+    case res := <-c1:
+        fmt.Println(res)
+    case <-time.After(1 * time.Second):
+        fmt.Println("timeout 1")
+    }
+    
+  //如果我们允许一个长一点的超时时间：3 秒， 就可以成功的从 c2 接收到值，并且打印出结果。  
+    
+    
+
+    c2 := make(chan string, 1)
+    go func() {
+        time.Sleep(2 * time.Second)
+        c2 <- "result 2"
+    }()
+    select {
+    case res := <-c2:
+        fmt.Println(res)
+    case <-time.After(3 * time.Second):
+        fmt.Println("timeout 2")
+    }
+}
+```
 
 
 
