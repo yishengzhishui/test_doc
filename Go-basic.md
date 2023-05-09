@@ -1335,6 +1335,7 @@ func main() {
 函数是一个简单的循环，打印出三个数值。匿名函数只打印一个字符串。由于协程运行在独立的线程中，因此它们可能不按照特定的顺序运行。 最后，使用time.Sleep()函数使主线程休眠一秒钟，以确保协程有足够的时间完成执行。
 
 ## 通道(Channels)
+
 通道(channels) 是连接多个协程的管道。 你可以从一个协程将值发送到通道，然后在另一个协程中接收。
 
 ```go
@@ -1352,12 +1353,14 @@ func main() {
     fmt.Println(msg)
 }
 ```
+
 默认发送和接收操作是阻塞的，直到发送方和接收方都就绪。 这个特性允许我们，不使用任何其它的同步操作， 就可以在程序结尾处等待消息 "ping"。
 
 ### 通道缓冲
 
 默认情况下，通道是**无缓冲**的，这意味着只有对应的接收（<- chan） 通道准备好接收时，才允许进行发送（chan <-）。 有缓冲通道 允许在没有**对应接收者**的情况下，缓存一定数量的值。
 在这种情况下，发送者可以发送到通道而不会被阻塞，直到缓冲区填满。同样地，接收者可以从通道接收数据而不会被阻塞，直到缓冲区为空。
+
 ```go
 package main
 
@@ -1376,6 +1379,7 @@ func main() {
 ```
 
 在使用通道时，通常需要将它们与goroutine一起使用，以便可以在不同的goroutine之间发送和接收数据。可以在goroutine内部使用select语句，从多个通道接收数据。
+
 ```go
 select {
 case <- ch1:
@@ -1386,11 +1390,12 @@ default:
     // 没有通道准备好，执行默认操作
 }
 ```
+
 select语句可以等待多个通道中的任何一个准备好接收数据。如果没有通道准备好，select语句就会等待。可以使用default语句指定在没有通道准备好时要执行的默认操作。
- 
+
 ### 通道方向
-当使用通道作为函数的参数时，你可以指定这个通道是否为只读或只写。 该特性可以提升程序的类型安全。
-通道可以是单向的或双向的。单向通道限制了通道的操作方向，即只能发送或只能接收。
+
+当使用通道作为函数的参数时，你可以指定这个通道是否为只读或只写。 该特性可以提升程序的类型安全。 通道可以是单向的或双向的。单向通道限制了通道的操作方向，即只能发送或只能接收。
 
 ```go
 package main
@@ -1416,7 +1421,9 @@ func main() {
     fmt.Println(<-pongs)
 }
 ```
+
 ### 超时操作
+
 ```go
 package main
 
@@ -1462,14 +1469,327 @@ func main() {
 }
 ```
 
+### 关闭通道
 
+```go
+package main
 
+import "fmt"
 
+func main() {
+    jobs := make(chan int, 5)
+    done := make(chan bool)
 
+    go func() {
+        for {
+            j, more := <-jobs
+            if more {
+                fmt.Println("received job", j)
+            } else {
+                fmt.Println("received all jobs")
+                done <- true
+                return
+            }
+        }
+    }()
 
+    for j := 1; j <= 3; j++ {
+        jobs <- j
+        fmt.Println("sent job", j)
+    }
+    close(jobs)
+    fmt.Println("sent all jobs")
 
+    <-done
+}
+```
 
+通道关闭后，再执行拿取操作，将会立即得到一个零值，并返回一个对应的可选的布尔值 false 表示通道已关闭。
 
+## Timer 定时器
+
+定时器表示在未来某一时刻的独立事件。 你告诉定时器需要等待的时间，然后它将提供一个用于通知的通道 如果你需要的仅仅是单纯的等待，使用 time.Sleep 就够了。 使用定时器的原因之一就是，你可以在定时器触发之前将其取消
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+//这里的定时器将等待 2 秒。
+    timer1 := time.NewTimer(2 * time.Second)
+//<-timer1.C 会一直阻塞， 直到定时器的通道 C 明确的发送了定时器失效的值。
+    <-timer1.C
+    fmt.Println("Timer 1 fired")
+
+    timer2 := time.NewTimer(time.Second)
+    go func() {
+        <-timer2.C
+        fmt.Println("Timer 2 fired")
+    }()
+    //停止了定时器 因为此时 timer2 尚未到期，所以该方法返回 true。
+    stop2 := timer2.Stop()
+    if stop2 {
+        fmt.Println("Timer 2 stopped")
+    }
+
+    time.Sleep(2 * time.Second)
+}
+```
+
+## Ticker 打点器
+
+打点器可以和定时器一样被停止。 打点器一旦停止，将不能再从它的通道中接收到值。 我们将在运行 1600ms 后停止这个打点器。
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+
+    ticker := time.NewTicker(500 * time.Millisecond)
+    done := make(chan bool)
+
+    go func() {
+        for {
+            select {
+            case <-done:
+                return
+            case t := <-ticker.C:
+                fmt.Println("Tick at", t)
+            }
+        }
+    }()
+
+    time.Sleep(1600 * time.Millisecond)
+    ticker.Stop()
+    done <- true
+    fmt.Println("Ticker stopped")
+}
+```
+
+## 字符串处理函数
+
+### 字符串基本操作函数：
+
+1. len(str) int：返回字符串的长度。
+2. +或fmt.Sprintf(str1, str2) string：字符串拼接。
+3. strings.Split(str, sep) []string：字符串分割。
+4. strings.Contains(str, substr) bool：判断字符串是否包含某个子串。
+5. strings.HasPrefix(str, prefix) bool：判断字符串是否以某个前缀开头。
+6. strings.HasSuffix(str, suffix) bool：判断字符串是否以某个后缀结尾。
+7. strings.Index(str, substr) int：返回子串在字符串中第一次出现的位置，若不存在则返回-1。
+8. strings.LastIndex(str, substr) int：返回子串在字符串中最后一次出现的位置，若不存在则返回-1。
+
+### 字符串处理函数：
+
+1. strings.ToUpper(str) string：将字符串中的所有字符转换为大写。
+2. strings.ToLower(str) string：将字符串中的所有字符转换为小写。 
+3. strings.TrimSpace(str) string：去除字符串首尾的空白字符。 
+4. strings.Trim(str, cutset) string：去除字符串首尾指定的字符。 
+5. strings.Replace(str, old, new, n) string：将字符串中的某个子串替换成另一个子串，n表示替换的次数（-1表示全部替换）。 
+6. strings.Count(str, substr) int：返回子串在字符串中出现的次数。
+
+## 读取文件
+
+逐行读取
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	// 打开文件
+	file, err := os.Open("example.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	// 延迟关闭文件
+	defer file.Close()
+
+	// 使用 bufio 包读取文件
+	scanner := bufio.NewScanner(file)
+
+	// 逐行读取文件
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+	}
+
+	if err := scanner.Err(); err != nil {
+		panic(err)
+	}
+}
+```
+### 读取并解析CSV和TSV
+对于CSV和TSV文件，可以使用Go语言内置的encoding/csv包来进行读取和解析。该包提供了一个Reader类型，它可以逐行读取CSV和TSV文件，并返回一个二维数组，每一行对应一个子数组。
+
+```go
+package main
+
+import (
+    "encoding/csv"
+    "fmt"
+    "os"
+)
+
+func main() {
+    // 打开 CSV 文件
+    f, err := os.Open("data.csv")
+    if err != nil {
+        panic(err)
+    }
+    defer f.Close()
+
+    // 创建 CSV 读取器
+    r := csv.NewReader(f)
+    r.Comma = ',' // 设置分隔符为逗号，对于TSV文件，只需要将r.Comma设置为制表符即可
+// r.Comma = '\t' // 设置分隔符为制表符
+    // 逐行读取 CSV 文件
+    for {
+        record, err := r.Read()
+        if err != nil {
+            break
+        }
+        fmt.Println(record)
+    }
+}
+值得注意的是，r.Read方法返回的是一个由字符串组成的切片，每个字符串都是CSV或TSV文件中的一个字段。如果需要将字符串转换为其他类型，例如数字或布尔值，可以使用Go语言内置的转换函数进行转换。
+```
+
+## 写入文件
+### 逐行写入
+该代码会将10行数据写入名为test.txt的文件中。其中，os.OpenFile()函数用于打开文件，os.O_CREATE|os.O_WRONLY|os.O_TRUNC参数表示如果文件不存在则创建，写入方式为覆盖写入，文件权限为0644。创建写入器时使用了bufio.NewWriter()函数，该函数接受一个文件操作对象作为参数，返回一个写入器对象。使用写入器对象的WriteString()方法逐行写入数据，写入完毕后使用Flush()方法将缓存中的数据写入文件。
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	// 打开文件，如果不存在则创建
+	file, err := os.OpenFile("test.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		fmt.Println("Open file error:", err)
+		return
+	}
+	defer file.Close()
+
+	// 创建写入器
+	writer := bufio.NewWriter(file)
+
+	// 写入数据
+	for i := 1; i <= 10; i++ {
+		_, err := writer.WriteString(fmt.Sprintf("line %d\n", i))
+		if err != nil {
+			fmt.Println("Write file error:", err)
+			return
+		}
+	}
+
+	// 将缓存中的数据写入文件
+	err = writer.Flush()
+	if err != nil {
+		fmt.Println("Flush buffer error:", err)
+		return
+	}
+}
+```
+
+### 逐行写入TSV文件
+1. 使用bufio.NewWriter创建一个带缓冲的写入器writer，可以避免频繁地写入磁盘，提高写入效率。 
+2. 使用strings.Join函数将每一行的数据用\t连接起来，形成一行tsv格式的数据。 
+3. 在写入每一行数据后，通过writer.Flush()强制将数据写入磁盘。
+```go
+package main
+
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strings"
+)
+
+func main() {
+    data := [][]string{
+        {"Name", "Age", "Gender"},
+        {"Tom", "20", "Male"},
+        {"Alice", "25", "Female"},
+        {"Bob", "30", "Male"},
+    }
+
+    file, err := os.Create("output.tsv")
+    if err != nil {
+        fmt.Println("Failed to create file:", err)
+        return
+    }
+    defer file.Close()
+
+    writer := bufio.NewWriter(file)
+
+    for _, row := range data {
+        line := strings.Join(row, "\t")
+        _, err := writer.WriteString(line + "\n")
+        if err != nil {
+            fmt.Println("Failed to write data:", err)
+            return
+        }
+    }
+
+    writer.Flush()
+    fmt.Println("Data has been written to the file.")
+}
+```
+
+### 逐行写入csv文件
+```go
+package main
+
+import (
+	"bufio"
+	"encoding/csv"
+	"os"
+)
+
+func main() {
+	data := [][]string{
+		{"first_name", "last_name", "email"},
+		{"John", "Doe", "john@example.com"},
+		{"Jane", "Doe", "jane@example.com"},
+		{"Joe", "Schmoe", "joe@example.com"},
+	}
+
+	file, err := os.Create("output.csv")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(bufio.NewWriter(file))
+	defer writer.Flush()
+
+	for _, row := range data {
+		if err := writer.Write(row); err != nil {
+			panic(err)
+		}
+	}
+}
+```
 
 
 
