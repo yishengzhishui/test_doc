@@ -642,7 +642,7 @@ func main() {
 
     var pp **int = &p1
     println(**pp) // 5
-    pp = &p2      
+    pp = &p2    
     println(**pp) // 55
 }  
 ------------------
@@ -899,7 +899,7 @@ fmt.Println(s) // Rob Pike, Robert Griesemer, Ken Thompson
 
 > bytes.Buffer与strings.Builder，strings.Builder更合适，因为bytes.Buffer 转化为字符串时重新申请了一块空间，存放生成的字符串变量，而 strings.Builder 直接将底层的 []byte 转换成了字符串类型返回了回来。
 >
->  bytes.Buffer 的注释中还特意提到了： To build strings more efficiently, see the strings.Builder type.
+> bytes.Buffer 的注释中还特意提到了： To build strings more efficiently, see the strings.Builder type.
 
 ##### 第四个操作：字符串比较
 
@@ -1450,10 +1450,10 @@ func main() {
     case <-time.After(1 * time.Second):
         fmt.Println("timeout 1")
     }
-    
+  
   //如果我们允许一个长一点的超时时间：3 秒， 就可以成功的从 c2 接收到值，并且打印出结果。  
-    
-    
+  
+  
 
     c2 := make(chan string, 1)
     go func() {
@@ -1591,15 +1591,16 @@ func main() {
 ### 字符串处理函数：
 
 1. strings.ToUpper(str) string：将字符串中的所有字符转换为大写。
-2. strings.ToLower(str) string：将字符串中的所有字符转换为小写。 
-3. strings.TrimSpace(str) string：去除字符串首尾的空白字符。 
-4. strings.Trim(str, cutset) string：去除字符串首尾指定的字符。 
-5. strings.Replace(str, old, new, n) string：将字符串中的某个子串替换成另一个子串，n表示替换的次数（-1表示全部替换）。 
+2. strings.ToLower(str) string：将字符串中的所有字符转换为小写。
+3. strings.TrimSpace(str) string：去除字符串首尾的空白字符。
+4. strings.Trim(str, cutset) string：去除字符串首尾指定的字符。
+5. strings.Replace(str, old, new, n) string：将字符串中的某个子串替换成另一个子串，n表示替换的次数（-1表示全部替换）。
 6. strings.Count(str, substr) int：返回子串在字符串中出现的次数。
 
 ## 读取文件
 
 逐行读取
+
 ```go
 package main
 
@@ -1633,7 +1634,9 @@ func main() {
 	}
 }
 ```
+
 ### 读取并解析CSV和TSV
+
 对于CSV和TSV文件，可以使用Go语言内置的encoding/csv包来进行读取和解析。该包提供了一个Reader类型，它可以逐行读取CSV和TSV文件，并返回一个二维数组，每一行对应一个子数组。
 
 ```go
@@ -1670,8 +1673,11 @@ func main() {
 ```
 
 ## 写入文件
+
 ### 逐行写入
+
 该代码会将10行数据写入名为test.txt的文件中。其中，os.OpenFile()函数用于打开文件，os.O_CREATE|os.O_WRONLY|os.O_TRUNC参数表示如果文件不存在则创建，写入方式为覆盖写入，文件权限为0644。创建写入器时使用了bufio.NewWriter()函数，该函数接受一个文件操作对象作为参数，返回一个写入器对象。使用写入器对象的WriteString()方法逐行写入数据，写入完毕后使用Flush()方法将缓存中的数据写入文件。
+
 ```go
 package main
 
@@ -1712,9 +1718,11 @@ func main() {
 ```
 
 ### 逐行写入TSV文件
-1. 使用bufio.NewWriter创建一个带缓冲的写入器writer，可以避免频繁地写入磁盘，提高写入效率。 
-2. 使用strings.Join函数将每一行的数据用\t连接起来，形成一行tsv格式的数据。 
+
+1. 使用bufio.NewWriter创建一个带缓冲的写入器writer，可以避免频繁地写入磁盘，提高写入效率。
+2. 使用strings.Join函数将每一行的数据用\t连接起来，形成一行tsv格式的数据。
 3. 在写入每一行数据后，通过writer.Flush()强制将数据写入磁盘。
+
 ```go
 package main
 
@@ -1757,6 +1765,7 @@ func main() {
 ```
 
 ### 逐行写入csv文件
+
 ```go
 package main
 
@@ -1790,9 +1799,3 @@ func main() {
 	}
 }
 ```
-
-
-
-
-
-
