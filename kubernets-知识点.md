@@ -44,7 +44,6 @@ docker pull busybox      #拉取busybox镜像
 docker images # 它会列出当前 Docker 所存储的所有镜像：
 ```
 
-
 ### 1.被隔离的进程
 
 ```shell
@@ -94,8 +93,6 @@ docker run 常用参数
 >
 > --name 可以为容器起一个名字，方便我们查看，不过它不是必须的，如果不用这个参数，Docker 会分配一个随机的名字。
 
-
-
 对于正在运行中的容器，我们可以使用 docker exec 命令在里面执行另一个程序
 
 容器被停止后使用 docker ps 命令就看不到了，不过容器并没有被彻底销毁，我们可以使用 docker ps -a 命令查看系统里所有的容器，当然也包括已经停止运行的容器：
@@ -109,9 +106,9 @@ docker run -d --rm nginx:alpine // --rm参数 是不保存容器，用完了就�
 
 ![image.png](./assets/1691830013727-image.png)
 
+![image.png](./assets/1692107029950-image.png)
 
 ### Dockerfile
-
 
 ```shell
 
@@ -193,15 +190,10 @@ docker build -f Dockerfile文件名 .  // .是当前路径 代表构建上下文
 **只有 RUN, COPY, ADD 会生成新的镜像层，其它指令只会产生临时层**
 
 1. 创建镜像需要编写 Dockerfile，写清楚创建镜像的步骤，每个指令都会生成一个 Layer。
-
 2. Dockerfile 里，第一个指令必须是 FROM，用来选择基础镜像，常用的有 Alpine、Ubuntu 等。
-
 3. 其他常用的指令有：COPY、RUN、EXPOSE，分别是拷贝文件，运行 Shell 命令，声明服务端口号。docker build 需要用 -f 来指定 Dockerfile，如果不指定就使用当前目录下名字是“Dockerfile”的文件。
-
 4. docker build 需要指定“构建上下文”，其中的文件会打包上传到 Docker daemon，所以尽量不要在“构建上下文”中存放多余的文件。
-
 5. 创建镜像的时候应当尽量使用 -t 参数，为镜像起一个有意义的名字，方便管理。
-
 
 ### 数据交换
 
@@ -253,4 +245,64 @@ host 模式需要在 docker run 时使用 --net=host 参数，下面我就用这
 
 ```shell
 docker run -d --rm --net=host nginx:alpine
+```
+
+3. 第三种 bridge，也就是桥接模式，它有点类似现实世界里的交换机、路由器，只不过是由软件虚拟出来的，容器和宿主机再通过虚拟网卡接入这个网桥
+
+```shell
+docker run -d --rm nginx:alpine    # 默认使用桥接模式
+docker run -d --rm redis           # 默认使用桥接模式
+```
+
+查看ip
+
+```shell
+ip addr                    # 本机查看网卡
+docker exec xxx ip addr    # 容器查看网卡
+```
+
+（Redis 容器里没有 ip 命令，所以只能在 Nginx 容器里执行）：
+
+```shell
+docker inspect xxx |grep IPAddress
+```
+
+端口映射
+
+端口号映射需要使用 bridge 模式，并且在 docker run 启动容器时使用 -p 参数，形式和共享目录的 -v 参数很类似，用 : 分隔本机端口和容器端口。比如，如果要启动两个 Nginx 容器，分别跑在 80 和 8080 端口上：
+
+```shell
+docker run -d -p 80:80 --rm nginx:alpine
+docker run -d -p 8080:80 --rm nginx:alpine
+```
+
+
+小结：
+
+1. docker cp 命令可以在容器和主机之间互相拷贝文件，适合简单的数据交换。
+2. docker run -v 命令可以让容器和主机共享本地目录，免去了拷贝操作，提升工作效率。
+3. host 网络模式让容器与主机共享网络栈，效率高但容易导致端口冲突。
+4. bridge 网络模式实现了一个虚拟网桥，容器和主机都在一个私有网段内互联互通。
+5. docker run -p 命令可以把主机的端口号映射到容器的内部端口号，解决了潜在的端口冲突问题。
+
+### 入门导图
+
+![image.png](./assets/1692107411229-image.png)
+
+
+### 演练
+
+```shell
+docker pull registry
+docker run -d -p 5000:5000 registry
+//重新打包，因为上传的目标不是默认的 Docker Hub，而是本地的私有仓库，所以镜像的名字前面还必须再加上仓库的地址（域名或者 IP 地址都行），形式上和 HTTP 的 URL 非常像。
+docker tag nginx:alpine 127.0.0.1:5000/nginx:alpine
+docker push 127.0.0.1:5000/nginx:alpine
+```
+
+为了验证是否已经成功推送，我们可以把刚才打标签的镜像删掉，再重新下载：
+
+```shell
+docker rmi  127.0.0.1:5000/nginx:alpine
+docker pull 127.0.0.1:5000/nginx:alpine
 ```
