@@ -85,6 +85,14 @@ docker run -h srv alpine hostname
 
 这里的 -h srv 就是容器的运行参数，alpine 是镜像名，它后面的 hostname 表示要在容器里运行的“hostname”这个程序，输出主机名。
 
+`-h srv`：这是一个选项，用于指定正在创建的容器的主机名。在这个命令中，`-h` 后面的 `srv` 是所设置的主机名。
+
+这个命令的含义是：在一个新的Docker容器中，使用Alpine Linux镜像运行`hostname`命令，并将容器的主机名设置为`srv`。执行这个命令后，容器的主机名将会变为`srv`，您可以在容器内部执行`hostname`命令来验证设置的主机名。
+
+```shell
+docker run -it alpine sh
+```
+
 docker run 常用参数
 
 > -it 表示开启一个交互式操作的 Shell，这样可以直接进入容器内部，就好像是登录虚拟机一样。（它实际上是“-i”和“-t”两个参数的组合形式）
@@ -195,6 +203,44 @@ docker build -f Dockerfile文件名 .  // .是当前路径 代表构建上下文
 4. docker build 需要指定“构建上下文”，其中的文件会打包上传到 Docker daemon，所以尽量不要在“构建上下文”中存放多余的文件。
 5. 创建镜像的时候应当尽量使用 -t 参数，为镜像起一个有意义的名字，方便管理。
 
+#### 编写Dockerfile的基本步骤：
+
+1. **选择基础镜像：** 在Dockerfile的第一行，指定用作基础的镜像，通常是操作系统的一个发行版，如Alpine、Ubuntu等。
+2. **设置工作目录：** 使用 `WORKDIR` 指令设置容器内的工作目录，这将影响后续指令的相对路径。
+3. **复制文件：** 使用 `COPY` 或 `ADD` 指令将本地文件复制到容器内的指定路径。
+4. **安装依赖：** 使用适合基础镜像的包管理工具（如`apt`、`apk`、`yum`等）安装所需的软件包和依赖。
+5. **运行命令：** 使用 `RUN` 指令在容器内执行命令，例如安装软件包、配置环境等。
+6. **设置环境变量：** 使用 `ENV` 指令设置容器内的环境变量。
+7. **暴露端口：** 使用 `EXPOSE` 指令声明容器将监听的端口号。
+8. **定义入口命令：** 使用 `CMD` 或 `ENTRYPOINT` 指令定义容器启动时要执行的命令。
+9. **构建镜像：** 在Dockerfile所在的目录运行 `docker build` 命令来构建镜像，例如：`docker build -t imagename:tag .`。
+
+以下是一个简单的Dockerfile示例：
+
+```shell
+# 使用Alpine Linux作为基础镜像
+FROM alpine:latest
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制应用程序文件到容器内
+COPY app.py /app/
+
+# 安装Python3
+RUN apk add --no-cache python3
+
+# 设置环境变量
+ENV MY_ENV_VAR=myvalue
+
+# 暴露端口
+EXPOSE 80
+
+# 定义入口命令
+CMD ["python3", "app.py"]
+
+```
+
 ### 数据交换
 
 ![image.png](./assets/1691908922910-image.png)
@@ -276,7 +322,6 @@ docker run -d -p 80:80 --rm nginx:alpine
 docker run -d -p 8080:80 --rm nginx:alpine
 ```
 
-
 小结：
 
 1. docker cp 命令可以在容器和主机之间互相拷贝文件，适合简单的数据交换。
@@ -288,7 +333,6 @@ docker run -d -p 8080:80 --rm nginx:alpine
 ### 入门导图
 
 ![image.png](./assets/1692107411229-image.png)
-
 
 ### 演练
 
