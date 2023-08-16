@@ -350,3 +350,52 @@ docker push 127.0.0.1:5000/nginx:alpine
 docker rmi  127.0.0.1:5000/nginx:alpine
 docker pull 127.0.0.1:5000/nginx:alpine
 ```
+
+## 初级篇
+
+### 搭建kubernetes环境
+
+```shell
+# Intel x86_64
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+
+# Apple arm64
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-arm64
+
+sudo install minikube /usr/local/bin/
+minikube version
+
+```
+
+kubectl 的作用有点类似之前我们学习容器技术时候的工具“docker”，它也是一个命令行工具，作用也比较类似，同样是与 Kubernetes 后台服务通信，把我们的命令转发给 Kubernetes，实现容器和集群的管理功能。
+
+```shell
+minikube kubectl
+```
+
+我们就可以在本机上运行 minikube，创建 Kubernetes 实验环境了。
+
+```shell
+minikube start --kubernetes-version=v1.23.3
+# 查看状态
+minikube status
+minikube node list
+
+kubectl version # 不可直接使用
+
+
+```
+
+使用 Linux 的“alias”功能，为它创建一个别名，写到当前用户目录下的 .bashrc 里，也就是这样：
+
+```shell
+alias kubectl="minikube kubectl --"
+source <(kubectl completion bash) # 为了能够使用 kubectl 命令的自动补全配置脚本
+```
+
+
+在 Kubernetes 里运行一个 Nginx 应用，命令与 Docker 一样，也是 run，不过形式上有点区别，需要用 --image 指定镜像，然后 Kubernetes 会自动拉取并运行：
+
+```shell
+kubectl run ngx --image=nginx:alpine
+```
