@@ -528,3 +528,66 @@ kubectl run ngx --image=nginx:alpine $out
 3. 命令 `kubectl api-resources` 可以查看对象的 apiVersion 和 kind，命令 `kubectl explain` 可以查看对象字段的说明文档。
 4. 命令 `kubectl apply`、`kubectl delete` 发送 HTTP 请求，管理 API 对象。
 5. 使用参数`--dry-run=client -o yaml` 可以生成对象的 YAML 模板，简化编写工作。
+
+
+### POD
+
+![image.png](./assets/1692278675063-image.png)
+
+
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busy-pod
+  labels:
+    owner: chrono
+    env: demo
+    region: north
+    tier: back
+spec:
+  containers:
+  - image: busybox:latest
+    name: busy
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: os
+        value: "ubuntu"
+      - name: debug
+        value: "on"
+    command:
+      - /bin/echo
+    args:
+      - "$(os), $(debug)"
+```
+
+```shell
+kubectl apply -f busy-pod.yml # 创建 pod
+kubectl delete -f busy-pod.yml #删除 pod
+```
+
+我们可以用命令 `kubectl logs`，它会把 Pod 的标准输出流信息展示给我们看，在这里就会显示出预设的两个环境变量的值。
+
+使用命令 `kubectl get pod` 可以查看 Pod 列表和运行状态：
+
+我们可以使用命令 `kubectl describe` 来检查它的详细状态，它在调试排错时很有用：
+
+`kubectl describe pod busy-pod`
+
+`kubectl cp` 可以把本地文件拷贝进 Pod，`kubectl exec` 是进入 Pod 内部执行 Shell 命令，用法也差不多。
+
+比如我有一个“a.txt”文件，那么就可以使用 kubectl cp 拷贝进 Pod 的“/tmp”目录里：
+
+```shell
+echo 'aaa' > a.txt
+kubectl cp a.txt ngx-pod:/tmp
+```
+
+不过 kubectl exec 的命令格式与 Docker 有一点小差异，需要在 Pod 后面加上 --，把 kubectl 的命令与 Shell 命令分隔开
+
+```shell
+kubectl exec -it ngx-pod -- sh
+```
+
+虽然 Pod 是 Kubernetes 的核心概念，非常重要，但事实上在 Kubernetes 里通常并不会直接创建 Pod，因为它只是对容器做了简单的包装，比较脆弱，离复杂的业务需求还有些距离，需要 Job、CronJob、Deployment 等其他对象增添更多的功能才能投入生产使用。
