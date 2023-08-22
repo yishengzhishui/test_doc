@@ -681,9 +681,7 @@ kubectl apply -f sleep-job.yml
 kubectl get pod -w
 ```
 
-
 #### CronJob
-
 
 * 因为 CronJob 的名字有点长，所以 Kubernetes 提供了简写 cj，这个简写也可以使用命令 `kubectl api-resources` 看到；
 * CronJob 需要定时运行，所以我们在命令行里还需要指定参数 `--schedule`。
@@ -732,3 +730,181 @@ CronJob 使用定时规则控制 Job，Job 使用并发数量控制 Pod，Pod �
 2. Kubernetes 为离线业务提供了 Job 和 CronJob 两种 API 对象，分别处理“临时任务”和“定时任务”。
 3. Job 的关键字段是 spec.template，里面定义了用来运行业务的 Pod 模板，其他的重要字段有 completions、parallelism 等
 4. CronJob 的关键字段是 spec.jobTemplate 和 spec.schedule，分别定义了 Job 模板和定时运行的规则。
+
+### 配置 ConfigMap/Secret
+
+#### ConfigMap-明文信息
+
+创建一个模版
+
+```shell
+export out="--dry-run=client -o yaml"        # 定义Shell变量
+kubectl create cm info $out
+```
+
+```yaml
+# cm.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: info
+
+data:
+  count: '10'
+  debug: 'on'
+  path: '/etc/systemd'
+  greeting: |
+    say hello to kubernetes.
+```
+
+```shell
+kubectl apply -f cm.yml
+kubectl get cm
+kubectl describe cm info
+```
+
+#### Secret-机密信息
+
+创建 YAML 样板的命令是 `kubectl create secret generic`
+
+```shell
+kubectl create secret generic user --from-literal=name=root $out
+```
+
+```yaml
+# secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user
+
+data:
+  name: cm9vdA==  # root
+  pwd: MTIzNDU2   # 123456
+  db: bXlzcWw=    # mysql
+```
+
+```shell
+kubectl apply  -f secret.yml
+kubectl get secret
+kubectl describe secret user #kubectl describe 不能直接看到内容，只能看到数据的大小
+```
+
+#### 如何使用：环境变量和加载文件
+
+环境变量
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: env-pod
+
+spec:
+  containers:
+  - env:
+      - name: COUNT
+        valueFrom:
+          configMapKeyRef:
+            name: info
+            key: count
+      - name: GREETING
+        valueFrom:
+          configMapKeyRef:
+            name: info
+            key: greeting
+      - name: USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: user
+            key: name
+      - name: PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: user
+            key: pwd
+
+    image: busybox
+    name: busy
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/sleep", "300"]
+```
+
+定义了 4 个环境变量，COUNT、GREETING、USERNAME、PASSWORD。
+
+对于明文配置数据， COUNT、GREETING 引用的是 ConfigMap 对象，所以使用字段“configMapKeyRef”，里面的“name”是 ConfigMap 对象的名字，也就是之前我们创建的“info”，而“key”字段分别是“info”对象里的 count 和 greeting。
+
+同样的对于机密配置数据， USERNAME、PASSWORD 引用的是 Secret 对象，要使用字段“secretKeyRef”，再用“name”指定 Secret 对象的名字 user，用“key”字段应用它里面的 name 和 pwd 。
+
+![image.png](./assets/1692714101167-image.png)
+
+进行验证：
+
+```shell
+kubectl apply -f env-pod.yml
+kubectl exec -it env-pod -- sh
+
+echo $COUNT
+echo $GREETING
+echo $USERNAME $PASSWORD
+```
+
+Volume方式使用
+
+需要先定义两个volume，分别引用 ConfigMap 和 Secret。
+
+随后进行挂载到指定目录下
+
+完整的例子：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vol-pod
+
+spec:
+  volumes:
+  - name: cm-vol
+    configMap:
+      name: info
+  - name: sec-vol
+    secret:
+      secretName: user
+
+  containers:
+  - volumeMounts:
+    - mountPath: /tmp/cm-items
+      name: cm-vol
+    - mountPath: /tmp/sec-items
+      name: sec-vol
+
+    image: busybox
+    name: busy
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/sleep", "300"]
+```
+
+![image.png](./assets/1692714266841-image.png)
+
+验证
+
+```shell
+kubectl apply -f vol-pod.yml
+kubectl get pod
+kubectl exec -it vol-pod -- sh
+```
+
+你会看到，ConfigMap 和 Secret 都变成了目录的形式，而它们里面的 Key-Value 变成了一个个的文件，而文件名就是 Key。
+
+小结
+
+两种在 Kubernetes 里管理配置信息的 API 对象 ConfigMap 和 Secret，它们分别代表了明文信息和机密敏感信息，存储在 etcd 里，在需要的时候可以注入 Pod 供 Pod 使用。
+
+简单小结一下今天的要点：
+
+1. ConfigMap 记录了一些 Key-Value 格式的字符串数据，描述字段是“data”，不是“spec”。
+2. Secret 与 ConfigMap 很类似，也使用“data”保存字符串数据，但它要求数据必须是 Base64 编码，起到一定的保密效果。
+3. 在 Pod 的“env.valueFrom”字段中可以引用 ConfigMap 和 Secret，把它们变成应用可以访问的环境变量。
+4. 在 Pod 的“spec.volumes”字段中可以引用 ConfigMap 和 Secret，把它们变成存储卷，然后在“spec.containers.volumeMounts”字段中加载成文件的形式。
+5. ConfigMap 和 Secret 对存储数据的大小没有限制(1MB)，但小数据用环境变量比较适合，大数据应该用存储卷，可根据具体场景灵活应用。
