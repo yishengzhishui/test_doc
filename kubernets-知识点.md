@@ -908,3 +908,130 @@ kubectl exec -it vol-pod -- sh
 3. 在 Pod 的“env.valueFrom”字段中可以引用 ConfigMap 和 Secret，把它们变成应用可以访问的环境变量。
 4. 在 Pod 的“spec.volumes”字段中可以引用 ConfigMap 和 Secret，把它们变成存储卷，然后在“spec.containers.volumeMounts”字段中加载成文件的形式。
 5. ConfigMap 和 Secret 对存储数据的大小没有限制(1MB)，但小数据用环境变量比较适合，大数据应该用存储卷，可根据具体场景灵活应用。
+
+### 实战-WordPress
+
+编排 maria
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maria-cm
+
+data:
+  DATABASE: 'db'
+  USER: 'wp'
+  PASSWORD: '123'
+  ROOT_PASSWORD: '123'
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: maria-pod
+  labels:
+    app: wordpress
+    role: database
+
+spec:
+  containers:
+  - image: mariadb:10
+    name: maria
+    imagePullPolicy: IfNotPresent
+    ports:
+    - containerPort: 3306
+
+    envFrom:
+    - prefix: 'MARIADB_'
+      configMapRef:
+        name: maria-cm
+
+```
+
+使用了一个新的字段“envFrom”，这是因为 ConfigMap 里的信息比较多，如果用 env.valueFrom 一个个地写会非常麻烦，容易出错，而 envFrom 可以一次性地把 ConfigMap 里的字段全导入进 Pod，并且能够指定变量名的前缀（即这里的 MARIADB_），非常方便。
+
+```shell
+kubectl apply -f mariadb-pod.yml
+kubectl get pod -o wide
+```
+
+编排wordpress
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wp-cm
+
+data:
+  HOST: '172.17.0.2' # 根据实际ip
+  USER: 'wp'
+  PASSWORD: '123'
+  NAME: 'db'
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wp-pod
+  labels:
+    app: wordpress
+    role: website
+
+spec:
+  containers:
+  - image: wordpress:5
+    name: wp-pod
+    imagePullPolicy: IfNotPresent
+    ports:
+    - containerPort: 80
+
+    envFrom:
+    - prefix: 'WORDPRESS_DB_'
+      configMapRef:
+        name: wp-cm
+```
+
+```shell
+kubectl apply -f wp-pod.yml
+kubectl get pod -o wide
+```
+
+第三步是为 WordPress Pod 映射端口号，让它在集群外可见。
+
+本地的“8080”映射到 WordPress Pod 的“80”，kubectl 会把这个端口的所有数据都转发给集群内部的 Pod：
+
+```shell
+kubectl port-forward wp-pod 8080:80 &
+```
+
+注意在命令的末尾我使用了一个 `&` 符号，让端口转发工作在后台进行，这样就不会阻碍我们后续的操作。
+
+如果想关闭端口转发，需要敲命令 `fg` ，它会把后台的任务带回到前台，然后就可以简单地用`“Ctrl + C”`来停止转发了。
+
+第四步是创建反向代理的 Nginx，让我们的网站对外提供服务。
+
+`/tmp/proxy.conf`
+
+```yaml
+server {
+  listen 80;
+  default_type text/html;
+
+  location / {
+      proxy_http_version 1.1;
+      proxy_set_header Host $host;
+      proxy_pass http://127.0.0.1:8080;
+  }
+}
+```
+
+然后`docker run -v `命令加载这个配置文件，以容器的方式启动这个 Nginx 代理：
+
+```shell
+docker run -d --rm \
+    --net=host \
+    -v /tmp/proxy.conf:/etc/nginx/conf.d/default.conf \
+    nginx:alpine
+```
+
+有了 Nginx 的反向代理之后，我们就可以打开浏览器，输入本机的“127.0.0.1”或者是虚拟机的 IP 地址
