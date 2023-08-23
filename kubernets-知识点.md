@@ -49,7 +49,7 @@ passwd // change password
 ```
 sudo apt install -y docker.io #安装Docker Engine
 sudo service docker start         #启动docker服务
-sudo usermod -aG docker ${USER}   #当前用户加入docker组
+sudo usermod -aG docker ${USER}   #当前用户加入docker组 #需要退出重启
 docker ps #它会列出当前系统里运行的容器
 docker pull busybox      #拉取busybox镜像
 docker images # 它会列出当前 Docker 所存储的所有镜像：
