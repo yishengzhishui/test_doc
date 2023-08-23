@@ -9,9 +9,20 @@ sudo apt install -y openssh-server
 ip addr
 ```
 
-### 1.terminal打不开
+sudo 无法使用必须使用root时
 
-语言的问题，setting中全部切换为china
+```shell
+ su -
+chmod u+w /etc/sudoers
+vi /etc/sudoers
+在 root ALL(ALL)ALL 下面加上自己用户名
+```
+
+### 
+
+1.terminal打不开
+
+语言的问题，setting-regionAndLanguage中全部切换为china
 
 ### 2.sudo apt update 时 is not in the sudoers file解决
 
