@@ -1046,3 +1046,44 @@ docker run -d --rm \
 ```
 
 有了 Nginx 的反向代理之后，我们就可以打开浏览器，输入本机的“127.0.0.1”或者是虚拟机的 IP 地址
+
+## 中级
+
+### 搭建kubernetes 多集群部署
+
+准备两个机器（虚拟机建两个）
+
+```shell
+
+master node:
+192.168.56.3
+
+work node
+192.168.56.4
+
+
+master节点
+sudo vi /etc/hostname 改主机名
+prepare.sh
+admin.sh
+image.sh
+master.sh  修改 apiserver，复制john
+kubectl apply -f kube-flannel.yml
+kubectl get node # 查看节点
+
+work节点
+sudo vi /etc/hostname 改主机名
+prepare.sh
+admin.sh
+sudo kubeadm join 192.168.56.3:6443 --token jrxwfv.4mmjmig25chkgxko \
+	--discovery-token-ca-cert-hash sha256:2b40fa59a81d31029b2ba7e2a5985a44ce2569a1372dfc28de683a9b4f2e9195
+```
+
+安装完成后可以进行测试
+
+```shell
+# 在master节点上
+kubectl get node
+kubectl run ngx --image=nginx:alpine
+kubectl get pod -o wide
+```
