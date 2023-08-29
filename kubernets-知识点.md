@@ -1228,6 +1228,11 @@ spec:
         name: redis
         ports:
         - containerPort: 6379
+      tolerations: 
+#容忍度
+      - key: node-role.kubernetes.io/master
+      effect: NoSchedule
+      operator: Exists
 ```
 
 Deployment VS DamonSet
@@ -1296,8 +1301,11 @@ DaemonSet **一直在监控集群节点**的状态，命令执行后 Master 节�
 
 如果我们想让 DaemonSet 里的 Pod 能够在 Master 节点上运行，就要写出这样的一个 tolerations，容忍节点的 node-role.kubernetes.io/master:NoSchedule 这个污点：
 
-```shell
-tolerations:- key: node-role.kubernetes.io/master effect: NoSchedule operator: Exists
+```yaml
+tolerations:
+- key: node-role.kubernetes.io/master
+  effect: NoSchedule
+  operator: Exists
 ```
 
 添加容忍度的方法 需要重新不是ds.yml
