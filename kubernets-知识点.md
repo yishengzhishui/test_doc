@@ -1160,6 +1160,12 @@ kubectl get deploy # 查看状态
 
 kubectl scale 是命令式操作，**扩容和缩容只是临时的措施**，
 
+删除deply
+
+```shell
+kubectl delete deploy ngx-dep
+```
+
 如果应用需要长时间保持一个确定的 Pod 数量，最好还是编辑 Deployment 的 YAML 文件，改动“replicas”，再以声明式的 `kubectl apply` 修改对象的状态。
 
 根据label查看对象
