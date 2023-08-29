@@ -1087,3 +1087,94 @@ kubectl get node
 kubectl run ngx --image=nginx:alpine
 kubectl get pod -o wide
 ```
+
+### Deployment
+
+创建模版文件
+
+```shell
+export out="--dry-run=client -o yaml"
+kubectl create deploy ngx-dep --image=nginx:alpine $out
+```
+
+例子：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ngx-dep
+  name: ngx-dep
+  
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ngx-dep
+  
+  template:
+    metadata:
+      labels:
+        app: ngx-dep
+    spec:
+      containers:
+      - image: nginx:alpine
+        name: nginx
+```
+
+为了保证 Deployment 成功创建，我们必须在 YAML 里把 label 重复写两次：
+
+一次是在“selector.matchLabels”，另一次是在“template.matadata”。像在这里，你就要在这两个地方连续写
+
+`app: ngx-dep ：`
+
+关系：
+
+![image.png](./assets/1693318958590-image.png)
+
+
+创建对象：
+
+```shell
+kubectl apply -f deploy.yml
+kubectl get deploy # 查看状态
+```
+
+![image.png](./assets/1693319022778-image.png)
+
+字段解释：
+
+* READY 表示运行的 Pod 数量，前面的数字是当前数量，后面的数字是期望数量，所以“2/2”的意思就是要求有两个 Pod 运行，现在已经启动了两个 Pod。
+* UP-TO-DATE 指的是当前已经更新到最新状态的 Pod 数量。因为如果要部署的 Pod 数量很多或者 Pod 启动比较慢，Deployment 完全生效需要一个过程，UP-TO-DATE 就表示现在有多少个 Pod 已经完成了部署，达成了模板里的“期望状态”。
+* AVAILABLE 要比 READY、UP-TO-DATE 更进一步，不仅要求已经运行，还必须是健康状态，能够正常对外提供服务，它才是我们最关心的 Deployment 指标。
+* 最后一个 AGE 就简单了，表示 Deployment 从创建到现在所经过的时间，也就是运行的时间。
+
+最后查看pod，需要用 `kubectl get pod` 命令来看看 Pod 的状态：
+
+扩容
+
+在 Deployment 部署成功之后，你还可以随时调整 Pod 的数量，实现所谓的“应用伸缩”
+
+`kubectl scale --replicas=5 deploy ngx-dep`
+
+kubectl scale 是命令式操作，**扩容和缩容只是临时的措施**，
+
+如果应用需要长时间保持一个确定的 Pod 数量，最好还是编辑 Deployment 的 YAML 文件，改动“replicas”，再以声明式的 `kubectl apply` 修改对象的状态。
+
+根据label查看对象
+
+```shell
+kubectl get pod -l app=nginx
+kubectl get pod -l 'app in (ngx, nginx, ngx-dep)'
+```
+
+小结：
+
+Deployment，它表示的是在线业务，和 Job/CronJob 的结构类似，也包装了 Pod 对象，通过添加额外的控制功能实现了**应用永不宕机**
+
+1. Pod 只能管理容器，不能管理自身，所以就出现了 Deployment，由它来管理 Pod。
+2. Deployment 里有三个关键字段，其中的 template 和 Job 一样，定义了要运行的 Pod 模板。
+3. replicas 字段定义了 Pod 的“期望数量”，Kubernetes 会自动维护 Pod 数量到正常水平。
+4. selector 字段定义了基于 labels 筛选 Pod 的规则，它必须与 template 里 Pod 的 labels 一致。
+5. 创建 Deployment 使用命令 kubectl apply，应用的扩容、缩容使用命令 kubectl scale。
