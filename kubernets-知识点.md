@@ -1184,3 +1184,120 @@ Deployment，它表示的是在线业务，和 Job/CronJob 的结构类似，也
 3. replicas 字段定义了 Pod 的“期望数量”，Kubernetes 会自动维护 Pod 数量到正常水平。
 4. selector 字段定义了基于 labels 筛选 Pod 的规则，它必须与 template 里 Pod 的 labels 一致。
 5. 创建 Deployment 使用命令 kubectl apply，应用的扩容、缩容使用命令 kubectl scale。
+
+
+### DaemonSet
+
+DaemonSet，它会在 Kubernetes 集群的每个节点上都运行一个 Pod，就好像是 Linux 系统里的“守护进程”（Daemon）。
+
+Deployment 并不关心这些 Pod 会在集群的哪些节点上运行，在它看来，Pod 的运行环境与功能是无关的，只要 Pod 的数量足够，应用程序应该会正常工作。
+
+但是有一些业务比较特殊，它们不是完全独立于系统运行的，而是与主机存在“绑定”关系，必须要依附于节点才能产生价值，比如说：
+
+* 网络应用（如 kube-proxy），必须每个节点都运行一个 Pod，否则节点就无法加入 Kubernetes 网络。
+* 监控应用（如 Prometheus），必须每个节点都有一个 Pod 用来监控节点的状态，实时上报信息。
+* 日志应用（如 Fluentd），必须在每个节点上运行一个 Pod，才能够搜集容器运行时产生的日志数据。
+* 安全应用，同样的，每个节点都要有一个 Pod 来执行安全审计、入侵检查、漏洞扫描等工作。
+
+DaemonSet 的目标是在集群的**每个节点上运行且仅运行一个 Pod**，就好像是为节点配上一只“看门狗”，忠实地“守护”着节点，这就是 DaemonSet 名字的由来。
+
+不支持使用`kubectl create`创建模版文件，选取折中的方案
+
+选取网上样本进行修改：
+
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: redis-ds
+  labels:
+    app: redis-ds
+
+spec:
+  selector:
+    matchLabels:
+      name: redis-ds
+
+  template:
+    metadata:
+      labels:
+        name: redis-ds
+    spec:
+      containers:
+      - image: redis:5-alpine
+        name: redis
+        ports:
+        - containerPort: 6379
+```
+
+Deployment VS DamonSet
+
+![image.png](./assets/1693319971127-image.png)
+
+
+所以就有第二张方案：
+
+你只需要用 kubectl create 先创建出一个 Deployment 对象，然后把 kind 改成 DaemonSet，再删除 spec.replicas 就行了，比如：
+
+```shell
+export out="--dry-run=client -o yaml"
+
+# change "kind" to DaemonSet
+kubectl create deploy redis-ds --image=redis:5-alpine $out
+```
+
+使用DaemonSet
+
+```shell
+kubectl apply -f ds.yml
+```
+
+因为我们的实验环境里有一个 Master 一个 Worker，而 Master 默认是不跑应用的，所以 DaemonSet 就只生成了一个 Pod，运行在了“worker”节点上。
+
+#### 什么是污点（taint）和容忍度（toleration）
+
+Kubernetes 在创建集群的时候会自动给节点 Node 加上一些“污点”，方便 Pod 的调度和部署。你可以用 kubectl describe node 来查看 Master 和 Worker 的状态：
+
+```shell
+kubectl describe node master
+
+Name:     master
+Roles:    control-plane,master
+...
+Taints:   node-role.kubernetes.io/master:NoSchedule
+...
+
+kubectl describe node worker
+
+Name:     worker
+Roles:    <none>
+...
+Taints:   <none>
+...
+```
+
+可以看到：Master 节点默认有一个 taint，名字是 `node-role.kubernetes.io/master`，它的效果是 `NoSchedule`，也就是说这个污点会拒绝 Pod 调度到本节点上运行，而 Worker 节点的 taint 字段则是空的。
+
+这正是 Master 和 Worker 在 Pod 调度策略上的区别所在，通常来说 Pod 都不能容忍任何“污点”，所以加上了 taint 属性的 Master 节点也就会无缘 Pod 了。
+
+##### 如何将DaemonSet在Master节点运行
+
+第一种方法是去掉 Master 节点上的 taint，让 Master 变得和 Worker 一样“纯洁无瑕”，DaemonSet 自然就不需要再区分 Master/Worker。
+
+操作 Node 上的“污点”属性需要使用命令 `kubectl taint`，然后指定节点名、污点名和污点的效果，去掉污点要额外加上一个 `-`。
+
+```shell
+kubectl taint node master node-role.kubernetes.io/master:NoSchedule-
+```
+
+DaemonSet **一直在监控集群节点**的状态，命令执行后 Master 节点已经没有了“污点”，所以它立刻就会发现变化，然后就会在 Master 节点上创建一个“守护”Pod。
+
+第二种方法，为 Pod 添加字段 tolerations，让它能够“容忍”某些“污点”，就可以在任意的节点上运行了。
+
+如果我们想让 DaemonSet 里的 Pod 能够在 Master 节点上运行，就要写出这样的一个 tolerations，容忍节点的 node-role.kubernetes.io/master:NoSchedule 这个污点：
+
+```shell
+tolerations:- key: node-role.kubernetes.io/master effect: NoSchedule operator: Exists
+```
+
+添加容忍度的方法 需要重新不是ds.yml
