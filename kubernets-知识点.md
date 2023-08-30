@@ -1075,8 +1075,8 @@ work节点
 sudo vi /etc/hostname 改主机名
 prepare.sh
 admin.sh
-sudo kubeadm join 192.168.56.3:6443 --token jrxwfv.4mmjmig25chkgxko \
-	--discovery-token-ca-cert-hash sha256:2b40fa59a81d31029b2ba7e2a5985a44ce2569a1372dfc28de683a9b4f2e9195
+kubeadm join 192.168.56.3:6443 --token 1rxv6a.xofyxikclcca162q \
+	--discovery-token-ca-cert-hash sha256:9f82a5414a1c545c7c8bfb0e8879879266712b5a3febcbe25a65911662da8e5e
 ```
 
 安装完成后可以进行测试
@@ -1133,7 +1133,6 @@ spec:
 
 ![image.png](./assets/1693318958590-image.png)
 
-
 创建对象：
 
 ```shell
@@ -1184,7 +1183,6 @@ Deployment，它表示的是在线业务，和 Job/CronJob 的结构类似，也
 3. replicas 字段定义了 Pod 的“期望数量”，Kubernetes 会自动维护 Pod 数量到正常水平。
 4. selector 字段定义了基于 labels 筛选 Pod 的规则，它必须与 template 里 Pod 的 labels 一致。
 5. 创建 Deployment 使用命令 kubectl apply，应用的扩容、缩容使用命令 kubectl scale。
-
 
 ### DaemonSet
 
@@ -1238,7 +1236,6 @@ spec:
 Deployment VS DamonSet
 
 ![image.png](./assets/1693319971127-image.png)
-
 
 所以就有第二张方案：
 
@@ -1309,3 +1306,153 @@ tolerations:
 ```
 
 添加容忍度的方法 需要重新不是ds.yml
+
+### Service
+
+主要用于服务发现，实现负载均衡
+
+Kubernetes 会给它分配一个静态 IP 地址，然后它再去自动管理、维护后面动态变化的 Pod 集合，当客户端访问 Service，它就根据某种策略，把流量转发给后面的某个 Pod。
+
+![image.png](./assets/1693404223983-image.png)
+
+这里 Service 使用了 iptables 技术，每个节点上的 kube-proxy 组件自动维护 iptables 规则，客户不再关心 Pod 的具体地址，只要访问 Service 的固定 IP 地址，Service 就会根据 iptables 规则转发请求给它管理的多个 Pod，是典型的负载均衡架构。
+
+如何使用
+
+使用`kubectl expose`创建模版yaml
+
+```shell
+export out="--dry-run=client -o yaml"
+kubectl expose deploy ngx-dep --port=80 --target-port=80 $out
+```
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ngx-svc
+  
+spec:
+  selector:
+    app: ngx-dep
+  
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+```
+
+selector 和 Deployment/DaemonSet 里的作用是一样的，用来过滤出要代理的那些 Pod。
+
+因为我们**指定要代理 Deployment**，所以 Kubernetes 就为我们自动填上了 ngx-dep 的标签，**会选择这个 Deployment 对象部署的所有 Pod**。
+
+两者之间的关系
+
+![image.png](./assets/1693404452722-image.png)
+
+使用步骤
+
+**1.首先，我们创建一个 ConfigMap，定义一个 Nginx 的配置片段**，
+
+它会输出服务器的地址、主机名、请求的 URI 等基本信息：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ngx-conf
+
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location / {
+        default_type text/plain;
+        return 200
+          'srv : $server_addr:$server_port\nhost: $hostname\nuri : $request_method $host $request_uri\ndate: $time_iso8601\n';
+      }
+    }
+```
+
+2.然后我们在 Deployment 的“template.volumes”里定义存储卷，再用“volumeMounts”把配置文件加载进 Nginx 容器里：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngx-dep
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ngx-dep
+
+  template:
+    metadata:
+      labels:
+        app: ngx-dep
+    spec:
+      volumes:
+      - name: ngx-conf-vol
+        configMap:
+          name: ngx-conf
+
+      containers:
+      - image: nginx:alpine
+        name: nginx
+        ports:
+        - containerPort: 80
+
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d
+          name: ngx-conf-vol
+```
+
+3. 创建Service 对象
+   ```shell
+   kubectl apply -f svc.yml
+   ```
+
+查看状态：
+
+```shell
+kubectl get svc # svc是service缩写
+kubectl describe svc ngx-svc 查看这个service代理哪些pod
+```
+
+测试负载均衡效果
+
+```shell
+kubectl exec -it ngx-dep-6796688696-r2j6t -- sh # 进入pod内部
+```
+
+进入pod在虚拟机中可能会有问题：
+
+> 问题的原因是，virtualBox 给每个虚拟机默认一个 NAT 的网口，这个网口的 IP 是 virtualBox 自动分配的，且所有的地址都是 10.0.2.15，这个所有节点都相同的 IP 显然会对 kubernetes 造成困扰。解决问题的办法很简单，只要指定 kubelet 使用其他网口即可（网口通常使用的是 192.168 开头的你的路由器的 IP），具体方法是在 /etc/systemd/system/kubelet.service.d/10-kubeadm.conf（我使用的是 ubuntu 系统，其他系统可能是其他路径）文件中添加如下代码 Environment="KUBELET_EXTRA_ARGS=--node-ip=xxx.xxx.xxx.xxx" ，其中 xxx 就是你虚拟机分配的 IP 地址。修改完成后使用 sudo systemctl daemon-reload 和 sudo systemctl restart kubelet.service 重启 kubelet。
+
+在 Pod 里，用 curl 访问 **Service 的 IP 地址**，就会看到它把数据转发给后端的 Pod，输出信息会显示具体是哪个 Pod 响应了请求，就表明 Service 确实完成了对 Pod 的负载均衡任务。
+
+另外：Service 的 IP 地址是“虚”的，只用于转发流量
+
+如何使用域名访问
+
+Service 对象的域名完全形式是“对象. 名字空间.svc.cluster.local”，但很多时候也可以省略后面的部分，直接写“对象. 名字空间”甚至“对象名”就足够了，默认会使用对象所在的名字空间（比如这里就是 default）。
+
+现在我们来试验一下 DNS 域名的用法，还是先 kubectl exec 进入 Pod，然后用 curl 访问 ngx-svc、ngx-svc.default 等域名：
+
+（顺便说一下，Kubernetes 也为每个 Pod 分配了域名，形式是“IP 地址. 名字空间.pod.cluster.local”，但需要把 IP 地址里的 . 改成 - 。比如地址 10.10.1.87，它对应的域名就是 10-10-1-87.default.pod。）
+
+在集群pod上面对外暴露端口
+
+如果我们在使用命令 kubectl expose 的时候加上参数 --type=NodePort，或者在 YAML 里添加字段 type:NodePort，那么 Service 除了会对后端的 Pod 做负载均衡之外，还会在集群里的每个节点上创建一个独立的端口，用这个端口对外提供服务，这也正是“NodePort”这个名字的由来。
+
+![image.png](./assets/1693405159372-image.png)
+
+小结
+
+* Pod 的生命周期很短暂，会不停地创建销毁，所以就需要用 Service 来实现负载均衡，它由 Kubernetes 分配固定的 IP 地址，能够屏蔽后端的 Pod 变化。
+* Service 对象使用与 Deployment、DaemonSet 相同的“selector”字段，选择要代理的后端 Pod，是松耦合关系。
+* 基于 DNS 插件，我们能够以域名的方式访问 Service，比静态 IP 地址更方便。
+* 名字空间是 Kubernetes 用来隔离对象的一种方式，实现了逻辑上的对象分组，Service 的域名里就包含了名字空间限定。
+* Service 的默认类型是“ClusterIP”，只能在集群内部访问，如果改成“NodePort”，就会在节点上开启一个随机端口号，让外界也能够访问内部的服务。
