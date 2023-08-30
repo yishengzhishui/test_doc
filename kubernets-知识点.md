@@ -1425,6 +1425,7 @@ kubectl describe svc ngx-svc 查看这个service代理哪些pod
 
 ```shell
 kubectl exec -it ngx-dep-6796688696-r2j6t -- sh # 进入pod内部
+curl 10.103.56.213 # 这个service的ip地址
 ```
 
 进入pod在虚拟机中可能会有问题：
@@ -1440,6 +1441,30 @@ kubectl exec -it ngx-dep-6796688696-r2j6t -- sh # 进入pod内部
 Service 对象的域名完全形式是“对象. 名字空间.svc.cluster.local”，但很多时候也可以省略后面的部分，直接写“对象. 名字空间”甚至“对象名”就足够了，默认会使用对象所在的名字空间（比如这里就是 default）。
 
 现在我们来试验一下 DNS 域名的用法，还是先 kubectl exec 进入 Pod，然后用 curl 访问 ngx-svc、ngx-svc.default 等域名：
+
+虚拟机需要处理网卡的问题
+
+> 卸载`kubectl delete -f kube-flannel.yml`
+>
+> kube-flannel.yml 文件中加入  --iface=enp0s3，位置如下
+> containers:
+>
+> - name: kube-flannel
+>   image: xxx
+>   command:
+>   - /opt/bin/flanneld
+>     args:
+>   - --ip-masq
+>   - --kube-subnet-mgr
+>   - --iface=enp0s3 # 这里新增这条
+> - 重装flannel `kubectl apply -f kube-flannel.yml`
+> - 重启kubelet：
+>   systemctl restart kubelet
+> - 重新apply `kubectl apply -f ngx-deploy.yml`
+
+```shell
+kubectl -n kube-system rollout restart deployment coredns # 有的时候需要重启 coredns
+```
 
 （顺便说一下，Kubernetes 也为每个 Pod 分配了域名，形式是“IP 地址. 名字空间.pod.cluster.local”，但需要把 IP 地址里的 . 改成 - 。比如地址 10.10.1.87，它对应的域名就是 10-10-1-87.default.pod。）
 
