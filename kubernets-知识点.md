@@ -1468,7 +1468,7 @@ kubectl -n kube-system rollout restart deployment coredns # 有的时候需要�
 
 （顺便说一下，Kubernetes 也为每个 Pod 分配了域名，形式是“IP 地址. 名字空间.pod.cluster.local”，但需要把 IP 地址里的 . 改成 - 。比如地址 10.10.1.87，它对应的域名就是 10-10-1-87.default.pod。）
 
-在集群pod上面对外暴露端口
+在集群pod上面对外暴露端口(master节点是没有的，所以访问不了，因为pod都在worker节点上来)
 
 如果我们在使用命令 kubectl expose 的时候加上参数 --type=NodePort，或者在 YAML 里添加字段 type:NodePort，那么 Service 除了会对后端的 Pod 做负载均衡之外，还会在集群里的每个节点上创建一个独立的端口，用这个端口对外提供服务，这也正是“NodePort”这个名字的由来。
 
