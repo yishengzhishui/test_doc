@@ -1481,3 +1481,247 @@ kubectl -n kube-system rollout restart deployment coredns # 有的时候需要�
 * 基于 DNS 插件，我们能够以域名的方式访问 Service，比静态 IP 地址更方便。
 * 名字空间是 Kubernetes 用来隔离对象的一种方式，实现了逻辑上的对象分组，Service 的域名里就包含了名字空间限定。
 * Service 的默认类型是“ClusterIP”，只能在集群内部访问，如果改成“NodePort”，就会在节点上开启一个随机端口号，让外界也能够访问内部的服务。
+
+### Ingress
+
+如何使用
+
+先看 Ingress。
+
+Ingress 也是可以使用 kubectl create 来创建样板文件的，和 Service 类似，它也需要用两个附加参数：
+
+* --class，指定 Ingress 从属的 Ingress Class 对象。
+* --rule，指定路由规则，基本形式是“URI=Service”，也就是说是访问 HTTP 路径就转发到对应的 Service 对象，再由 Service 对象转发给后端的 Pod。
+
+```shell
+export out="--dry-run=client -o yaml"
+kubectl create ing ngx-ing --rule="ngx.test/=ngx-svc:80" --class=ngx-ink $out
+```
+
+生成的模版文件：
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ngx-ing
+  
+spec:
+
+  ingressClassName: ngx-ink
+  
+  rules:
+  - host: ngx.test
+    http:
+      paths:
+      - path: /
+#精确匹配（Exact）或者是前缀匹配（Prefix）
+        pathType: Exact
+        backend:
+          service:
+            name: ngx-svc
+            port:
+              number: 80
+```
+
+其实 Ingress Class 本身并没有什么实际的功能，**只是起到联系 Ingress 和 Ingress Controller 的作用**，所以它的定义非常简单，在“spec”里只有一个必需的字段“controller”，表示要使用哪个 Ingress Controller，具体的名字就要看实现文档了。
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: ngx-ink
+
+spec:
+  controller: nginx.org/ingress-controller  #使用Nginx 开发的 Ingress Controller
+```
+
+![image.png](./assets/1693491024705-image.png)
+
+在kubernetes使用
+
+上面两个yaml可以合成一个
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: ngx-ink
+
+spec:
+  controller: nginx.org/ingress-controller
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ngx-ing
+  annotations:
+#轮询算法
+    nginx.org/lb-method: round_robin
+spec:
+
+  ingressClassName: ngx-ink
+
+  rules:
+  - host: ngx.test
+    http:
+      paths:
+      - path: /
+        pathType: Exact
+        backend:
+          service:
+            name: ngx-svc
+            port:
+              number: 80
+```
+
+```shell
+kubectl apply -f ingress.yml
+#查看状态
+kubectl get ingressclass
+kubectl get ing
+kubectl describe ing ngx-ing #查看详情
+```
+
+
+使用Ingress Controller
+前期准备 已经放在`setup.sh`
+
+```shell
+kubectl apply -f common/ns-and-sa.yaml
+kubectl apply -f rbac/rbac.yaml
+kubectl apply -f common/nginx-config.yaml
+kubectl apply -f common/default-server-secret.yaml
+```
+
+* 前两条命令为 Ingress Controller 创建了一个独立的名字空间“nginx-ingress”，还有相应的账号和权限，这是为了访问 apiserver 获取 Service、Endpoint 信息用的；
+* 后两条则是创建了一个 ConfigMap 和 Secret，用来配置 HTTP/HTTPS 服务。
+
+kic.yml使用官网的并对其进行来一些修改
+
+* metadata 里的 name 要改成自己的名字，比如 ngx-kic-dep。
+* spec.selector 和 template.metadata.labels 也要修改成自己的名字，比如还是用 ngx-kic-dep。
+* containers.image 可以改用 apline 版本，加快下载速度，比如 nginx/nginx-ingress:2.2-alpine。
+* 最下面的 args 要加上 -ingress-class=ngx-ink，也就是前面创建的 Ingress Class 的名字，这是让 Ingress Controller 管理 Ingress 的关键。
+
+创建 `kic.yml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngx-kic-dep
+  namespace: nginx-ingress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ngx-kic-dep
+  template:
+    metadata:
+      labels:
+        app: ngx-kic-dep
+        app.kubernetes.io/name: nginx-ingress
+    spec:
+      serviceAccountName: nginx-ingress
+      automountServiceAccountToken: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - image: nginx/nginx-ingress:2.2-alpine
+        imagePullPolicy: IfNotPresent
+        name: nginx-ingress
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
+        - name: readiness-port
+          containerPort: 8081
+        - name: prometheus
+          containerPort: 9113
+        readinessProbe:
+          httpGet:
+            path: /nginx-ready
+            port: readiness-port
+          periodSeconds: 1
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+         #limits:
+         #  cpu: "1"
+         #  memory: "1Gi"
+        securityContext:
+          allowPrivilegeEscalation: true
+#          readOnlyRootFilesystem: true
+          runAsUser: 101 #nginx
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        args:
+          - --ingress-class=ngx-ink
+          - -health-status
+          - -ready-status
+          - -nginx-status
+          - -nginx-configmaps=$(POD_NAMESPACE)/nginx-config
+          - -default-server-tls-secret=$(POD_NAMESPACE)/default-server-secret
+
+```
+
+![image.png](./assets/1693496723704-image.png)
+
+##### 基本流程
+
+```shell
+cd cd k8s_study/ingress/
+/setup.sh  #需要根据文档创建相应的yml，已经放在这个路径下
+cd k8s_study/gateway/
+kubectl apply -f ngx-deploy.yml 创建 Deployment 和 Service 对象
+kubectl apply -f ingress.yml
+kubectl apply -f kic.yml
+
+#逐个查看状态
+kubectl get ingressclass
+kubectl get ing
+kubectl describe ing ngx-ing
+#Ingress Controller 位于名字空间“nginx-ingress”，所以查看状态需要用“-n”参数显式指定，否则我们只能看到“default”名字空间里的 Pod：
+kubectl get deploy -n nginx-ingress
+kubectl get pod -n nginx-ingress
+
+#端口映射
+kubectl port-forward -n nginx-ingress ngx-kic-dep-8859b7b86-cplgp 8080:80 &  ngx-kic-dep-8859b7b86-cplgp是自己生成的pod
+# 因为在 Ingress 里我们设定的路由规则是 ngx.test 域名，所以要用 curl 的 resolve 参数来把它强制解析到 127.0.0.1：
+curl --resolve ngx.test:8080:127.0.0.1 http://ngx.test:8080
+```
+
+测试完成后，删除相应的pod和deploy等对象
+
+```shell
+kubectl delete -f deploy.yml
+kubectl delete -f svc.yml
+kubectl delete -f ingress.yml
+kubectl delete -f kic.yml
+```
+
+小结：
+
+1. Service 是四层负载均衡，能力有限，所以就出现了 Ingress，它基于 HTTP/HTTPS 协议定义路由规则。
+2. Ingress 只是规则的集合，自身不具备流量管理能力，需要 Ingress Controller 应用 Ingress 规则才能真正发挥作用。
+3. Ingress Class 解耦了 Ingress 和 Ingress Controller，我们应当使用 Ingress Class 来管理 Ingress 资源。
+4. 最流行的 Ingress Controller 是 Nginx Ingress Controller，它基于经典反向代理软件 Nginx。
+
+目前的 Kubernetes 流量管理功能主要集中在 Ingress Controller 上，已经远不止于管理“入口流量”了，它还能管理“出口流量”，也就是 egress，甚至还可以管理集群内部服务之间的“东西向流量”。此外，Ingress Controller 通常还有很多的其他功能，比如 TLS 终止、网络应用防火墙、限流限速、流量拆分、身份认证、访问控制等等，完全可以认为它是一个全功能的反向代理或者网关。
