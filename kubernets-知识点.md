@@ -1430,7 +1430,7 @@ curl 10.103.56.213 # 这个service的ip地址
 
 进入pod在虚拟机中可能会有问题：
 
-> 问题的原因是，virtualBox 给每个虚拟机默认一个 NAT 的网口，这个网口的 IP 是 virtualBox 自动分配的，且所有的地址都是 10.0.2.15，这个所有节点都相同的 IP 显然会对 kubernetes 造成困扰。解决问题的办法很简单，只要指定 kubelet 使用其他网口即可（网口通常使用的是 192.168 开头的你的路由器的 IP），具体方法是在 /etc/systemd/system/kubelet.service.d/10-kubeadm.conf（我使用的是 ubuntu 系统，其他系统可能是其他路径）文件中添加如下代码 Environment="KUBELET_EXTRA_ARGS=--node-ip=xxx.xxx.xxx.xxx" ，其中 xxx 就是你虚拟机分配的 IP 地址。修改完成后使用 sudo systemctl daemon-reload 和 sudo systemctl restart kubelet.service 重启 kubelet。
+> 问题的原因是，virtualBox 给每个虚拟机默认一个 NAT 的网口，这个网口的 IP 是 virtualBox 自动分配的，且所有的地址都是 10.0.2.15，这个所有节点都相同的 IP 显然会对 kubernetes 造成困扰。解决问题的办法很简单，只要指定 kubelet 使用其他网口即可（网口通常使用的是 192.168 开头的你的路由器的 IP），具体方法是在 /etc/systemd/system/kubelet.service.d/10-kubeadm.conf（我使用的是 ubuntu 系统，其他系统可能是其他路径）文件中添加如下代码 Environment="KUBELET_EXTRA_ARGS=--node-ip=xxx.xxx.xxx.xxx" ，其中 xxx 就是你虚拟机分配的 IP 地址。修改完成后使用 `sudo systemctl daemon-reload` 和 `sudo systemctl restart kubelet.service` 重启 kubelet。
 
 在 Pod 里，用 curl 访问 **Service 的 IP 地址**，就会看到它把数据转发给后端的 Pod，输出信息会显示具体是哪个 Pod 响应了请求，就表明 Service 确实完成了对 Pod 的负载均衡任务。
 
@@ -1583,7 +1583,6 @@ kubectl get ing
 kubectl describe ing ngx-ing #查看详情
 ```
 
-
 使用Ingress Controller
 前期准备 已经放在`setup.sh`
 
@@ -1725,3 +1724,27 @@ kubectl delete -f kic.yml
 4. 最流行的 Ingress Controller 是 Nginx Ingress Controller，它基于经典反向代理软件 Nginx。
 
 目前的 Kubernetes 流量管理功能主要集中在 Ingress Controller 上，已经远不止于管理“入口流量”了，它还能管理“出口流量”，也就是 egress，甚至还可以管理集群内部服务之间的“东西向流量”。此外，Ingress Controller 通常还有很多的其他功能，比如 TLS 终止、网络应用防火墙、限流限速、流量拆分、身份认证、访问控制等等，完全可以认为它是一个全功能的反向代理或者网关。
+
+
+## 虚拟机重启后，可能因为两张网卡的问题无法启动pod
+
+解决逻辑：
+
+1.在 `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf`文件中添加如下代码 `Environment="KUBELET_EXTRA_ARGS=--node-ip=xxx.xxx.xxx.xxx" `，其中 xxx 就是你虚拟机分配的 IP 地址。修改完成后使用 `sudo systemctl daemon-reload`和`sudo systemctl restart kubelet.service` 重启 kubelet。
+
+
+2.kube-flannel.yml 文件中加入  --iface=enp0s3，位置如下
+```yaml
+containers:
+
+- name: kube-flannel
+  image: xxx
+  command:
+  - /opt/bin/flanneld
+    args:
+  - --ip-masq
+  - --kube-subnet-mgr
+  - --iface=enp0s8 # 这里新增这条,这个就是虚拟机指定分配的哪个，可以通过ip addr show 查询
+  ```
+- 重装flannel `kubectl apply -f kube-flannel.yml`
+- 重启kubelet： `systemctl restart kubelet`
