@@ -1725,15 +1725,14 @@ kubectl delete -f kic.yml
 
 目前的 Kubernetes 流量管理功能主要集中在 Ingress Controller 上，已经远不止于管理“入口流量”了，它还能管理“出口流量”，也就是 egress，甚至还可以管理集群内部服务之间的“东西向流量”。此外，Ingress Controller 通常还有很多的其他功能，比如 TLS 终止、网络应用防火墙、限流限速、流量拆分、身份认证、访问控制等等，完全可以认为它是一个全功能的反向代理或者网关。
 
-
 ## 虚拟机重启后，可能因为两张网卡的问题无法启动pod
 
 解决逻辑：
 
 1.在 `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf`文件中添加如下代码 `Environment="KUBELET_EXTRA_ARGS=--node-ip=xxx.xxx.xxx.xxx" `，其中 xxx 就是你虚拟机分配的 IP 地址。修改完成后使用 `sudo systemctl daemon-reload`和`sudo systemctl restart kubelet.service` 重启 kubelet。
 
-
 2.kube-flannel.yml 文件中加入  --iface=enp0s3，位置如下
+
 ```yaml
 containers:
 
@@ -1745,6 +1744,345 @@ containers:
   - --ip-masq
   - --kube-subnet-mgr
   - --iface=enp0s8 # 这里新增这条,这个就是虚拟机指定分配的哪个，可以通过ip addr show 查询
-  ```
+```
+
 - 重装flannel `kubectl apply -f kube-flannel.yml`
 - 重启kubelet： `systemctl restart kubelet`
+
+### 实战使用wordpress
+
+#### 1.WordPress 网站部署 MariaDB
+
+`kubectl apply -f wp-maria.yml`
+
+wp-maria.yml
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: maria-cm
+
+data:
+  DATABASE: 'db'
+  USER: 'wp'
+  PASSWORD: '123'
+  ROOT_PASSWORD: '123'
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: maria-dep
+  name: maria-dep
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: maria-dep
+
+  template:
+    metadata:
+      labels:
+        app: maria-dep
+    spec:
+      containers:
+      - image: mariadb:10
+        name: mariadb
+        ports:
+        - containerPort: 3306
+
+        envFrom:
+        - prefix: 'MARIADB_'
+          configMapRef:
+            name: maria-cm
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: maria-dep
+  name: maria-svc
+
+spec:
+  ports:
+  - port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    app: maria-dep
+
+```
+
+#### 2.WordPress 网站部署 WordPress
+
+```shell
+kubectl apply  -f wp-dep.yml
+```
+
+wp-dep.yml
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wp-cm
+
+data:
+  HOST: 'maria-svc'
+  USER: 'wp'
+  PASSWORD: '123'
+  NAME: 'db'
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: wp-dep
+  name: wp-dep
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wp-dep
+
+  template:
+    metadata:
+      labels:
+        app: wp-dep
+    spec:
+      containers:
+      - image: wordpress:5
+        name: wordpress
+        ports:
+        - containerPort: 80
+
+        envFrom:
+        - prefix: 'WORDPRESS_DB_'
+          configMapRef:
+            name: wp-cm
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: wp-dep
+  name: wp-svc
+
+spec:
+  ports:
+  - name: http80
+    port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 30088
+
+  selector:
+    app: wp-dep
+  type: NodePort
+```
+
+#### 3.WordPress 网站部署 Nginx Ingress Controller
+
+```shell
+kubectl apply -f wp-ing.yml -f wp-kic.yml
+```
+
+wp-ing.yml
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: wp-ink
+
+spec:
+  controller: nginx.org/ingress-controller
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wp-ing
+  annotations:
+    nginx.org/lb-method: round_robin
+spec:
+
+  ingressClassName: wp-ink
+
+  rules:
+  - host: wp.test
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: wp-svc
+            port:
+              number: 80
+```
+
+wp-kic.yml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wp-kic-dep
+  namespace: nginx-ingress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wp-kic-dep
+  template:
+    metadata:
+      labels:
+        app: wp-kic-dep
+        app.kubernetes.io/name: nginx-ingress
+    spec:
+      serviceAccountName: nginx-ingress
+      hostNetwork: true
+      automountServiceAccountToken: true
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - image: nginx/nginx-ingress:2.2-alpine
+        imagePullPolicy: IfNotPresent
+        name: nginx-ingress
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
+        - name: readiness-port
+          containerPort: 8081
+        - name: prometheus
+          containerPort: 9113
+        readinessProbe:
+          httpGet:
+            path: /nginx-ready
+            port: readiness-port
+          periodSeconds: 1
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+         #limits:
+         #  cpu: "1"
+         #  memory: "1Gi"
+        securityContext:
+          allowPrivilegeEscalation: true
+#          readOnlyRootFilesystem: true
+          runAsUser: 101 #nginx
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+            add:
+            - NET_BIND_SERVICE
+#        volumeMounts:
+#        - mountPath: /etc/nginx
+#          name: nginx-etc
+#        - mountPath: /var/cache/nginx
+#          name: nginx-cache
+#        - mountPath: /var/lib/nginx
+#          name: nginx-lib
+#        - mountPath: /var/log/nginx
+#          name: nginx-log
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        args:
+          - --ingress-class=wp-ink
+          - -health-status
+          - -ready-status
+          - -nginx-status
+          - -nginx-configmaps=$(POD_NAMESPACE)/nginx-config
+          - -default-server-tls-secret=$(POD_NAMESPACE)/default-server-secret
+         #- -include-year
+         #- -enable-cert-manager
+         #- -enable-external-dns
+         #- -v=3 # Enables extensive logging. Useful for troubleshooting.
+         #- -report-ingress-status
+         #- -external-service=nginx-ingress
+         #- -enable-prometheus-metrics
+         #- -global-configuration=$(POD_NAMESPACE)/nginx-configuration
+#      initContainers:
+#      - image: nginx/nginx-ingress:3.2.1
+#        imagePullPolicy: IfNotPresent
+#        name: init-nginx-ingress
+#        command: ['cp', '-vdR', '/etc/nginx/.', '/mnt/etc']
+#        securityContext:
+#          allowPrivilegeEscalation: false
+#          readOnlyRootFilesystem: true
+#          runAsUser: 101 #nginx
+#          runAsNonRoot: true
+#          capabilities:
+#            drop:
+#            - ALL
+#        volumeMounts:
+#        - mountPath: /mnt/etc
+#          name: nginx-etc
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wp-kic-svc
+  namespace: nginx-ingress
+
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 30080
+
+  selector:
+    app: wp-kic-dep
+  type: NodePort
+```
+
+```shell
+kubectl apply -f wp-maria.yml
+kubectl apply -f wp-dep.yml
+kubectl apply -f wp-ing.yml
+kubectl apply -f wp-kic.yml
+```
+
+查看状态
+
+```shell
+kubectl get deploy
+kubectl get svc
+kubectl get pod -n nginx-ingress
+```
+
+在集群外的机器上访问 wp.test
+
+```shell
+sudo vim /etc/hosts
+192.168.56.4 wp.test
+```
+
+### 中级知识点脑图
+
+![image.png](./assets/1693673254340-image.png)
