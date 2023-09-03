@@ -1753,6 +1753,12 @@ containers:
 
 #### 1.WordPress 网站部署 MariaDB
 
+先要用 ConfigMap 定义数据库的环境变量，有 DATABASE、USER、PASSWORD、ROOT_PASSWORD：
+
+然后我们需要把 MariaDB 由 Pod 改成 Deployment 的方式，replicas 设置成 1 个，template 里面的 Pod 部分没有任何变化，还是要用 envFrom把配置信息以环境变量的形式注入 Pod，相当于把 Pod 套了一个 Deployment 的“外壳”：
+
+我们还需要再为 MariaDB 定义一个 Service 对象，映射端口 3306，让其他应用不再关心 IP 地址，直接用 Service 对象的名字来访问数据库服务：
+
 `kubectl apply -f wp-maria.yml`
 
 wp-maria.yml
@@ -1820,6 +1826,12 @@ spec:
 ```
 
 #### 2.WordPress 网站部署 WordPress
+
+因为刚才创建了 MariaDB 的 Service，所以在写 ConfigMap 配置的时候“HOST”就不应该是 IP 地址了，而应该是 DNS 域名，也就是 Service 的名字maria-svc，这点需要特别注意：
+
+WordPress 的 Deployment 写法和 MariaDB 也是一样的，给 Pod 套一个 Deployment 的“外壳”，replicas 设置成 2 个，用字段“envFrom”配置环境变量：
+
+然后我们仍然要为 WordPress 创建 Service 对象，这里我使用了“NodePort”类型，并且手工指定了端口号“30088”（必须在 30000~32767 之间）：
 
 ```shell
 kubectl apply  -f wp-dep.yml
@@ -1893,6 +1905,8 @@ spec:
 ```
 
 #### 3.WordPress 网站部署 Nginx Ingress Controller
+
+现在 MariaDB，WordPress 都已经部署成功了，第三步就是部署 Nginx Ingress Controller。首先我们需要定义 Ingress Class，名字就叫“wp-ink”，非常简单：
 
 ```shell
 kubectl apply -f wp-ing.yml -f wp-kic.yml
