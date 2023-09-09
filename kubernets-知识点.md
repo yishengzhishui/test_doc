@@ -2100,3 +2100,189 @@ sudo vim /etc/hosts
 ### 中级知识点脑图
 
 ![image.png](./assets/1693673254340-image.png)
+
+## 高级篇
+
+### PersistentVolume
+
+PersistentVolume 对象，它专门用来表示持久存储设备，但隐藏了存储的底层实现，我们只需要知道它能安全可靠地保管数据就可以了（由于 PersistentVolume 这个词很长，一般都把它简称为 PV）。
+
+作为存储的抽象，PV 实际上就是一些存储设备、文件系统，比如 Ceph、GlusterFS、NFS，甚至是本地磁盘。
+
+PV 属于集群的系统资源，是和 Node 平级的一种对象，**Pod 对它没有管理权，只有使用权**。
+
+### PersistentVolumeClaim/StorageClass
+
+PersistentVolumeClaim，简称 PVC，从名字上看比较好理解，就是用来向 Kubernetes 申请存储资源的。
+
+**PVC 是给 Pod 使用的对象**，它相当于是 Pod 的代理，代表 Pod 向系统申请 PV。一旦资源申请成功，Kubernetes 就会把 PV 和 PVC 关联在一起，这个动作叫做“绑定”（bind）。
+
+但是，系统里的存储资源非常多，如果要 **PVC 去直接遍历查找合适的 PV 也很麻烦**，所以就要用到 StorageClass。
+
+StorageClass 的作用有点像IngressClass，它抽象了特定类型的存储系统（比如 Ceph、NFS），在 PVC 和 PV 之间充当“协调人”的角色，帮助 PVC 找到合适的 PV。也就是说它可以简化 Pod 挂载“虚拟盘”的过程，让 Pod 看不到 PV 的实现细节。
+
+简单的关系如下：
+
+![image.png](./assets/1694245915596-image.png)
+
+##### 如何使用 YAML 描述 PersistentVolume
+
+以最简单的本机存储`HostPath`为例子
+
+因为 Pod 会在集群的任意节点上运行，所以首先，我们要作为系统管理员在每个节点上创建一个目录，**它将会作为本地存储卷**挂载到 Pod 里。
+
+为了省事，我就在 /tmp 里建立名字是 host-10m-pv 的目录，表示一个只有 10MB 容量的存储设备。**有了存储，我们就可以使用 YAML 来描述这个 PV 对象了。**
+
+不能用 kubectl create 直接创建 PV 对象，只能用 kubectl api-resources、kubectl explain 查看 PV 的字段说明，手动编写 PV 的 YAML 描述文件
+
+下面是一个使用例子：
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: host-10m-pv
+
+spec:
+  storageClassName: host-test
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Mi
+  hostPath:
+    path: /tmp/host-10m-pv/
+```
+
+字段解释：
+
+“storageClassName”就是刚才说过的，对存储类型的抽象 StorageClass。这个 PV 是我们手动管理的，名字可以任意起，这里我写的是 host-test，你也可以把它改成 manual、hand-work 之类的词汇。
+
+“accessModes”定义了存储设备的访问模式，简单来说就是虚拟盘的读写权限，和 Linux 的文件访问模式差不多，目前 Kubernetes 里有 3 种：
+
+* ReadWriteOnce：存储卷可读可写，但只能被一个节点上的 Pod 挂载。
+* ReadOnlyMany：存储卷只读不可写，可以被任意节点上的 Pod 多次挂载。
+* ReadWriteMany：存储卷可读可写，也可以被任意节点上的 Pod 多次挂载。
+
+显然，本地目录只能是在本机使用，所以这个 PV 使用了 ReadWriteOnce。
+
+Kubernetes 里定义存储容量使用的是国际标准，我们日常习惯使用的 KB/MB/GB 的基数是 1024，要写成 Ki/Mi/Gi，一定要小心不要写错了，否则单位不一致实际容量就会对不上。
+
+最后一个字段“hostPath”最简单，它指定了存储卷的本地路径，也就是我们在节点上创建的目录。
+
+#### 如何使用 YAML 描述 PersistentVolumeClaim
+
+有了 PV，就表示集群里有了这么一个持久化存储可以供 Pod 使用，我们需要再定义 PVC 对象，向 Kubernetes 申请存储。
+
+下面这份 YAML 就是一个 PVC，要求使用一个 **5MB 的存储设备**，访问模式是 **ReadWriteOnce**：
+
+PVC 的内容与 PV 很像，**但它不表示实际的存储**，而是一个“申请”或者“声明”，spec 里的字段描述的是对存储的“期望状态”。
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: host-5m-pvc
+
+spec:
+  storageClassName: host-test
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Mi
+```
+
+PVC 里的 storageClassName、accessModes 和 PV 是一样的，但不会有字段 capacity，而是要用 resources.request 表示希望要有多大的容量。
+
+这样，Kubernetes 就会根据 PVC 里的描述，去找能够匹配 StorageClass 和容量的 PV，然后把 PV 和 PVC“绑定”在一起，实现存储的分配，和前面打电话要 A4 纸的过程差不多。
+
+#### 如何在 Kubernetes 里使用 PersistentVolume
+
+```shell
+kubectl apply -f host-path-pv.yml
+kubectl get pv
+```
+
+接下来我们创建 PVC，申请存储资源：
+
+```shell
+kubectl apply -f host-path-pvc.yml
+kubectl get pvc
+```
+
+一旦 PVC 对象创建成功，Kubernetes 就会立即通过 StorageClass、resources 等条件在集群里查找符合要求的 PV，如果找到合适的存储对象就会把它俩“绑定”在一起。
+
+这两个对象的状态都是 Bound，也就是说存储申请成功，PVC 的实际容量就是 PV 的容量 10MB，而不是最初申请的容量 5MB。
+
+那么，如果我们把 PVC 的申请容量改大一些会怎么样呢？比如改成 100MB：**PVC 会一直处于 Pending 状态**，这意味着 Kubernetes 在系统里没有找到符合要求的存储，无法分配资源，只能等有满足要求的 PV 才能完成绑定。
+
+#### 如何为 Pod 挂载 PersistentVolume
+
+PV 和 PVC 绑定好了，有了持久化存储，现在我们就可以为 Pod 挂载存储卷。
+
+先要在 spec.volumes 定义存储卷，
+
+然后在 containers.volumeMounts 挂载进容器。
+
+不过因为我们用的是 PVC，所以要在 volumes 里用字段 persistentVolumeClaim 指定 PVC 的名字。
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-pvc-pod
+
+spec:
+  volumes:
+  - name: host-pvc-vol
+    persistentVolumeClaim:
+      claimName: host-5m-pvc
+
+  containers:
+    - name: ngx-pvc-pod
+      image: nginx:alpine
+      ports:
+      - containerPort: 80
+      volumeMounts:
+      - name: host-pvc-vol
+        mountPath: /tmp
+```
+
+##### Pod 和 PVC/PV 的关系图
+
+
+
+
+
+
+
+
+
+![image.png](./assets/1694247068222-image.png)
+
+
+```shell
+# 查看一下这个pod 的状态
+kubectl apply -f host-path-pod.yml
+kubectl get pod -o wide
+```
+
+确认一下是否pv是否挂在成功
+
+```shell
+kubectl exec -it host-path-pod -- sh
+cd /tmp
+echo aaa > a.txt
+cat a.txt
+```
+
+容器的 /tmp 目录里生成了一个 a.txt 的文件，根据 PV 的定义，它就应该落在 worker 节点的磁盘上，所以我们就**登录 worker 节点**检查一下
+
+小结
+
+Kubernetes 里应对持久化存储的解决方案，一共有三个 API 对象，分别是 PersistentVolume、PersistentVolumeClaim、StorageClass。它们管理的是集群里的存储资源，简单来说就是磁盘，Pod 必须通过它们才能够实现数据持久化。
+
+1. PersistentVolume 简称为 PV，是 Kubernetes 对存储设备的抽象，由系统管理员维护，需要描述清楚存储设备的类型、访问模式、容量等信息。
+2. PersistentVolumeClaim 简称为 PVC，代表 Pod 向系统申请存储资源，它声明对存储的要求，Kubernetes 会查找最合适的 PV 然后绑定。
+3. StorageClass 抽象特定类型的存储系统，归类分组 PV 对象，用来简化 PV/PVC 的绑定过程。
+4. HostPath 是最简单的一种 PV，数据存储在节点本地，速度快但不能跟随 Pod 迁移。
