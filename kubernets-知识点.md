@@ -2273,3 +2273,282 @@ Kubernetes 里应对持久化存储的解决方案，一共有三个 API 对象�
 2. PersistentVolumeClaim 简称为 PVC，代表 Pod 向系统申请存储资源，它声明对存储的要求，Kubernetes 会查找最合适的 PV 然后绑定。
 3. StorageClass 抽象特定类型的存储系统，归类分组 PV 对象，用来简化 PV/PVC 的绑定过程。
 4. HostPath 是最简单的一种 PV，数据存储在节点本地，速度快但不能跟随 Pod 迁移。
+
+
+
+### PersistentVolume + NFS 网络存储
+
+#### 安装NFS服务器
+
+```shell
+sudo apt -y install nfs-kernel-server
+mkdir -p /tmp/nfs #指定存储位置
+```
+
+配置NFS共享目录
+
+修改 `/etc/exports`，指定目录名、允许访问的网段，还有权限等参数
+
+```shell
+/tmp/nfs 192.168.10.0/24(rw,sync,no_subtree_check,no_root_squash,insecure)
+```
+
+```shell
+sudo exportfs -ra #通知 NFS，让配置生效
+sudo exportfs -v #查看是否成功
+```
+
+```shell
+# 启动服务器
+sudo systemctl start  nfs-server
+sudo systemctl enable nfs-server
+sudo systemctl status nfs-server
+
+# 查挂载情况
+showmount -e 127.0.0.1
+```
+
+#### 安装客户端
+
+每个节点都需要安装这个客户端才能访问数据
+
+```shell
+sudo apt -y install nfs-common
+showmount -e 服务器所在ip
+```
+
+测试：
+
+```shell
+ mkdir -p /tmp/test #测试所用挂载点
+sudo mount -t nfs 192.168.10.208:/tmp/nfs /tmp/test #把 NFS 服务器的共享目录挂载到刚才创建的本地目录上
+touch /tmp/test/x.yml #测试文件，到NFS服务器上 看/tmp/nfs是否有相同的文件
+```
+
+#### 如何使用 NFS 存储卷
+
+先来手工分配一个存储卷，需要指定 storageClassName 是 nfs，而 accessModes 可以设置成 ReadWriteMany，这是由 NFS 的特性决定的，它支持多个节点同时访问一个共享目录。
+
+这个存储卷是 NFS 系统，所以我们还需要在 YAML 里添加 nfs 字段，指定 NFS 服务器的 IP 地址和共享目录名。
+
+随后在 NFS 服务器的 `/tmp/nfs` 目录里又创建了一个新的目录 1g-pv，表示分配了 1GB 的可用存储空间，相应的，PV 里的 capacity 也要设置成同样的数值，也就是 1Gi
+
+下面是yaml例子：
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-1g-pv
+
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 1Gi
+
+  nfs:
+    path: /tmp/nfs/1g-pv
+    server: 192.168.10.208
+```
+
+```shell
+# 创建对象并查看状态
+kubectl apply -f nfs-static-pv.yml
+kubectl get pv
+```
+
+创建pvc：
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-static-pvc
+
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+创建pod并挂载这个volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-static-pod
+
+spec:
+  volumes:
+  - name: nfs-pvc-vol
+    persistentVolumeClaim:
+      claimName: nfs-static-pvc
+
+  containers:
+    - name: nfs-pvc-test
+      image: nginx:alpine
+      ports:
+      - containerPort: 80
+
+      volumeMounts:
+        - name: nfs-pvc-vol
+          mountPath: /tmp
+```
+
+关系图：
+
+![image.png](./assets/1694531372659-image.png)
+
+
+因为我们在 PV/PVC 里指定了 storageClassName 是 nfs，节点上也安装了 NFS 客户端，**所以 Kubernetes 就会自动执行 NFS 挂载动作**，把 NFS 的共享目录 /tmp/nfs/1g-pv 挂载到 Pod 里的 /tmp，完全不需要我们去手动管理。
+
+测试：
+
+```shell
+kubectl apply -f pod.yml
+kubectl get pod
+kubectl exec -it {pod-name} -- sh
+创建文件进行测试，到NFS服务器上查看 /tmp/nfs/ 是否有相同的文件
+```
+
+#### 如何部署 NFS Provisoner
+
+动态存储卷-自动化部署
+
+Kubernetes “动态存储卷”的概念，它可以用 StorageClass 绑定一个 Provisioner 对象，而这个 Provisioner 就是一个能够自动管理存储、创建 PV 的应用，代替了原来系统管理员的手工劳动。
+
+对于 NFS 来说，它的 Provisioner 就是[NFS subdir external provisioner](https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner)
+
+NFS Provisioner 也是以 Pod 的形式运行在 Kubernetes 里的，在 GitHub 的 deploy 目录里是部署它所需的 YAML 文件，一共有三个，分别是 rbac.yaml、class.yaml 和 deployment.yaml。
+
+对这个三个文件进行修改
+
+1. `rbac.yaml`，它使用的是默认的 `default` 名字空间，应该把它改成其他的名字空间，避免与普通应用混在一起，你可以用“查找替换”的方式把它统一改成 `kube-system`。
+2. `deployment.yaml`，首先 名字空间改成和 rbac.yaml 一样，比如是 kube-system；
+3. `deployment.yaml`然后重点要修改 volumes 和 env 里的 IP 地址和共享目录名，必须和集群里的 NFS 服务器配置一样,示例如下，（如果镜像拉取困难，需要把镜像的名字由原来的“k8s.gcr.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2”改成“chronolaw/nfs-subdir-external-provisioner:v4.0.2”）
+
+```yaml
+spec:
+  template:
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+      ...
+          env:
+            - name: PROVISIONER_NAME
+              value: k8s-sigs.io/nfs-subdir-external-provisioner
+            - name: NFS_SERVER
+              value: 192.168.10.208        #改IP地址
+            - name: NFS_PATH
+              value: /tmp/nfs              #改共享目录名
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: 192.168.10.208         #改IP地址
+            Path: /tmp/nfs                 #改共享目录名
+```
+
+创建：provisioner
+
+```shell
+kubectl apply -f rbac.yaml
+kubectl apply -f class.yaml
+kubectl apply -f deployment.yaml
+#查看是否运行正常
+kubectl get deploy -n kube-system
+```
+
+#### 如何使用
+
+因为有了 Provisioner，我们就不再需要手工定义 PV 对象了，只需要在 PVC 里指定 StorageClass 对象，它再关联到 Provisioner。
+
+默认的storageclass（class.yml）
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-client
+
+provisioner: k8s-sigs.io/nfs-subdir-external-provisioner 
+parameters:
+  archiveOnDelete: "false" #archiveOnDelete: "false" 就是自动回收存储空间。
+```
+
+可以不使用默认的，自己创建：
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-client-retained
+
+provisioner: k8s-sigs.io/nfs-subdir-external-provisioner
+parameters:
+  onDelete: "retain" # 暂时保留分配的存储
+```
+
+创建pvc
+
+```yaml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-dyn-10m-pvc
+
+spec:
+  storageClassName: nfs-client
+  accessModes:
+    - ReadWriteMany
+
+  resources:
+    requests:
+      storage: 10Mi
+```
+
+创建pod 挂载这个volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-dyn-pod
+
+spec:
+  volumes:
+  - name: nfs-dyn-10m-vol
+    persistentVolumeClaim:
+      claimName: nfs-dyn-10m-pvc
+
+  containers:
+    - name: nfs-dyn-test
+      image: nginx:alpine
+      ports:
+      - containerPort: 80
+
+      volumeMounts:
+        - name: nfs-dyn-10m-vol
+          mountPath: /tmp
+```
+
+
+
+关系图
+
+![image.png](./assets/1694532544705-image.png)
+
+
+小结：
+
+1. 在 Kubernetes 集群里，网络存储系统更适合数据持久化，NFS 是最容易使用的一种网络存储系统，要事先安装好服务端和客户端。
+2. 可以编写 PV 手工定义 NFS 静态存储卷，要指定 NFS 服务器的 IP 地址和共享目录名。
+3. 使用 NFS 动态存储卷必须要部署相应的 Provisioner，在 YAML 里正确配置 NFS 服务器。
+4. 动态存储卷不需要手工定义 PV，而是要定义 StorageClass，由关联的 Provisioner 自动创建 PV 完成绑定。
