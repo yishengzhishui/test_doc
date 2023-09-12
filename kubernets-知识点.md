@@ -18,9 +18,7 @@ vi /etc/sudoers
 在 root ALL(ALL)ALL 下面加上自己用户名
 ```
 
-### 
-
-1.terminal打不开
+### 1.terminal打不开
 
 语言的问题，setting-regionAndLanguage中全部切换为china
 
@@ -393,8 +391,6 @@ minikube status
 minikube node list
 
 kubectl version # 不可直接使用
-
-
 ```
 
 使用 Linux 的“alias”功能，为它创建一个别名，写到当前用户目录下的 .bashrc 里，也就是这样：
@@ -1725,7 +1721,7 @@ kubectl delete -f kic.yml
 
 目前的 Kubernetes 流量管理功能主要集中在 Ingress Controller 上，已经远不止于管理“入口流量”了，它还能管理“出口流量”，也就是 egress，甚至还可以管理集群内部服务之间的“东西向流量”。此外，Ingress Controller 通常还有很多的其他功能，比如 TLS 终止、网络应用防火墙、限流限速、流量拆分、身份认证、访问控制等等，完全可以认为它是一个全功能的反向代理或者网关。
 
-## 虚拟机重启后，可能因为两张网卡的问题无法启动pod
+### 虚拟机重启后，可能因为两张网卡的问题无法启动pod
 
 解决逻辑：
 
@@ -2250,16 +2246,7 @@ spec:
 
 ##### Pod 和 PVC/PV 的关系图
 
-
-
-
-
-
-
-
-
 ![image.png](./assets/1694247068222-image.png)
-
 
 ```shell
 # 查看一下这个pod 的状态
