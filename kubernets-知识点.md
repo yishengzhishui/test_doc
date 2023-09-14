@@ -2274,8 +2274,6 @@ Kubernetes 里应对持久化存储的解决方案，一共有三个 API 对象�
 3. StorageClass 抽象特定类型的存储系统，归类分组 PV 对象，用来简化 PV/PVC 的绑定过程。
 4. HostPath 是最简单的一种 PV，数据存储在节点本地，速度快但不能跟随 Pod 迁移。
 
-
-
 ### PersistentVolume + NFS 网络存储
 
 #### 安装NFS服务器
@@ -2405,7 +2403,6 @@ spec:
 关系图：
 
 ![image.png](./assets/1694531372659-image.png)
-
 
 因为我们在 PV/PVC 里指定了 storageClassName 是 nfs，节点上也安装了 NFS 客户端，**所以 Kubernetes 就会自动执行 NFS 挂载动作**，把 NFS 的共享目录 /tmp/nfs/1g-pv 挂载到 Pod 里的 /tmp，完全不需要我们去手动管理。
 
@@ -2539,12 +2536,9 @@ spec:
           mountPath: /tmp
 ```
 
-
-
 关系图
 
 ![image.png](./assets/1694532544705-image.png)
-
 
 小结：
 
@@ -2552,3 +2546,171 @@ spec:
 2. 可以编写 PV 手工定义 NFS 静态存储卷，要指定 NFS 服务器的 IP 地址和共享目录名。
 3. 使用 NFS 动态存储卷必须要部署相应的 Provisioner，在 YAML 里正确配置 NFS 服务器。
 4. 动态存储卷不需要手工定义 PV，而是要定义 StorageClass，由关联的 Provisioner 自动创建 PV 完成绑定。
+
+### 状态应用 StatefulSet
+
+#### 如何使用 YAML 描述 StatefulSet
+
+不可以直接创建模版，但是可以根据deployment改写得到
+
+redis-sts.yml:
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-sts
+
+spec:
+  serviceName: redis-svc
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redis-sts
+
+  template:
+    metadata:
+      labels:
+        app: redis-sts
+    spec:
+      containers:
+      - image: redis:5-alpine
+        name: redis
+        ports:
+        - containerPort: 6379
+```
+
+YAML 文件里除了 kind 必须是`“StatefulSet”`，在 spec 里还多出了一个`“serviceName”`字段，其余的部分和 Deployment 是一模一样的，比如 replicas、selector、template 等等。
+
+```shell
+# 测试
+kubectl apply -f redis-sts.yml
+kubectl get sts
+kubectl get pod
+
+#进入内部
+kubectl exec -it redis-sts-0 -- sh
+#测试 hostname
+echo $HOSTNAME
+```
+
+网络标识：
+
+我们不能用命令 kubectl expose 直接为 StatefulSet 生成 Service，只能手动编写 YAML。
+
+注意 ：metadata.name 必须和 StatefulSet 里的 serviceName 相同，selector 里的标签也必须和 StatefulSet 里的一致：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+
+spec:
+  selector:
+    app: redis-sts
+
+  ports:
+  - port: 6379
+    protocol: TCP
+    targetPort: 6379
+```
+
+```shell
+#创建测试
+kubectl apply -f redis-svc.yml
+kubectl get pod -o wide
+kubectl describe svc redis-svc
+```
+
+Service 自己会有一个域名，格式是“对象名. 名字空间”，每个 Pod 也会有一个域名，形式是“IP 地址. 名字空间”。但因为 IP 地址不稳定，所以 Pod 的域名并不实用，一般我们会使用稳定的 Service 域名。
+
+当我们把 Service 对象应用于 StatefulSet 的时候，情况就不一样了。
+
+Service 发现这些 Pod 不是一般的应用，而是有状态应用，需要有稳定的网络标识，所以就会为 Pod 再多创建出一个新的域名，格式是`“Pod 名. 服务名. 名字空间.svc.cluster.local”`。当然，这个域名也可以简写成`“Pod 名. 服务名”`。
+
+验证：
+
+```shell
+kubectl exec -it redis-sts-0 -- sh
+ping redis-sts-0.redis-svc
+```
+
+Service 原本的目的是负载均衡，应该由它在 Pod 前面来转发流量，但是对 StatefulSet 来说，这项功能反而是不必要的，**因为 Pod 已经有了稳定的域名，外界访问服务就不应该再通过 Service 这一层了**。所以，从安全和节约系统资源的角度考虑，我们可以在 Service 里添加一个字段 `clusterIP: None` ，告诉 Kubernetes 不必再为这个对象分配 IP 地址。
+
+![image.png](./assets/1694703592184-image.png)
+
+
+#### 如何实现 StatefulSet 的数据持久化
+
+为了强调持久化存储与 StatefulSet 的一对一绑定关系，Kubernetes 为 StatefulSet 专门定义了一个字段**volumeClaimTemplates**，直接把 PVC 定义嵌入 StatefulSet 的 YAML 文件里。这样能保证创建 StatefulSet 的同时，就会为每个 Pod 自动创建 PVC，让 StatefulSet 的可用性更高。
+
+redis-pv-sts.yml:
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-pv-sts
+
+spec:
+  serviceName: redis-pv-svc
+
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-100m-pvc
+    spec:
+      storageClassName: nfs-client
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: 100Mi
+
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redis-pv-sts
+
+  template:
+    metadata:
+      labels:
+        app: redis-pv-sts
+    spec:
+      containers:
+      - image: redis:5-alpine
+        name: redis
+        ports:
+        - containerPort: 6379
+
+        volumeMounts:
+        - name: redis-100m-pvc
+          mountPath: /data
+```
+
+关系图：
+
+![image.png](./assets/1694703709682-image.png)
+
+
+```shell
+#测试
+kubectl apply -f redis-pv-sts.yml
+kubectl get pvc
+
+## 添加一些key-value的值
+kubectl exec -it redis-pv-sts-0 -- redis-cli
+## 删除pod
+kubectl delete pod redis-pv-sts-0
+# 等自动创建新的pod后
+kubectl exec -it redis-pv-sts-0 -- redis-cli
+查看是否数据还在
+```
+
+
+小结：
+
+1. StatefulSet 的 YAML 描述和 Deployment 几乎完全相同，只是多了一个关键字段 serviceName。
+2. 要为 StatefulSet 里的 Pod 生成稳定的域名，需要定义 Service 对象，它的名字必须和 StatefulSet 里的 serviceName 一致。
+3. 访问 StatefulSet 应该使用每个 Pod 的单独域名，形式是“Pod 名. 服务名”，不应该使用 Service 的负载均衡功能。
+4. 在 StatefulSet 里可以用字段“volumeClaimTemplates”直接定义 PVC，让 Pod 实现数据持久化存储。
