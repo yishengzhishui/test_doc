@@ -2711,3 +2711,134 @@ kubectl exec -it redis-pv-sts-0 -- redis-cli
 2. 要为 StatefulSet 里的 Pod 生成稳定的域名，需要定义 Service 对象，它的名字必须和 StatefulSet 里的 serviceName 一致。
 3. 访问 StatefulSet 应该使用每个 Pod 的单独域名，形式是“Pod 名. 服务名”，不应该使用 Service 的负载均衡功能。
 4. 在 StatefulSet 里可以用字段“volumeClaimTemplates”直接定义 PVC，让 Pod 实现数据持久化存储。
+
+
+### 滚动更新-Kubectl rollout
+
+在 Kubernetes 里，使用命令 `kubectl scale`，我们就可以轻松调整 Deployment 下属的 Pod 数量，
+
+**StatefulSet 是 Deployment 的一种特例**，所以它也可以使用 `kubectl scale` 来实现“应用伸缩”。
+
+滚动更新，使用 `kubectl rollout` 实现用户无感知的应用升级和降级。
+
+在 Kubernetes 里，版本更新使用的不是 API 对象，而是两个命令：kubectl apply 和 kubectl rollout，当然它们也要搭配部署应用所需要的 Deployment、DaemonSet 等 YAML 文件。
+
+在 Kubernetes 里应用都是以 Pod 的形式运行的，而 Pod 通常又会被 Deployment 等对象来管理，所以应用的“版本更新”实际上**更新的是整个 Pod**。所以，在 Kubernetes 里应用的版本变化就是 template 里 Pod 的变化，哪怕 template 里只变动了一个字段，那也会形成一个新的版本，也算是版本变化。Kubernetes 就使用了“摘要”功能，用摘要算法计算 template 的 Hash 值作为“版本号”，虽然不太方便识别，但是很实用。
+
+#### 测试kubernets是如何实现滚动更新的
+
+1.测试前修改configMap
+
+让它输出 Nginx 的版本号，方便我们用 curl 查看版本：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ngx-conf
+
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location / {
+        default_type text/plain;
+        return 200
+          'ver : $nginx_version\nsrv : $server_addr:$server_port\nhost: $hostname\n';
+      }
+    }
+```
+
+2.修改 Pod 镜像，明确地指定版本号是 1.21-alpine，实例数设置为 4 个：
+
+命名为ngx-v1.yml
+
+`kubectl apply -f ngx-v1.yml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngx-dep
+
+spec:
+  replicas: 4
+  ... ...
+      containers:
+      - image: nginx:1.21-alpine
+  ... ...
+```
+
+3. 还可以为它创建 Service 对象，再用 kubectl port-forward 转发请求来查看状态：
+
+```shell
+kubectl port-forward svc/ngx-svc 8080:80 &
+curl 127.1:8080
+```
+
+4.现在，让我们编写一个新版本对象 ngx-v2.yml，把镜像升级到 nginx:1.22-alpine，其他的都不变。
+
+5.因为 Kubernetes 的动作太快了，为了能够观察到应用更新的过程，我们还需要添加一个字段 minReadySeconds，让 Kubernetes 在更新过程中等待一点时间，确认 Pod 没问题才继续其余 Pod 的创建工作。
+
+ngx-v2.yml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngx-dep
+
+spec:
+  minReadySeconds: 15      # 确认Pod就绪的等待时间 
+  replicas: 4
+  ... ...
+      containers:
+      - image: nginx:1.22-alpine
+  ... ...
+```
+
+6.现在我们执行命令 kubectl apply 来更新应用，因为改动了镜像名，Pod 模板变了，就会触发“版本更新”，然后用一个新命令：kubectl rollout status，来查看应用更新的状态：
+
+```shell
+kubectl apply -f ngx-v2.yml
+kubectl rollout status deployment ngx-dep
+```
+
+仔细查看 kubectl rollout status 的输出信息，你可以发现，Kubernetes 不是把旧 Pod 全部销毁再一次性创建出新 Pod，而是在逐个地创建新 Pod，同时也在销毁旧 Pod，保证系统里始终有足够数量的 Pod 在运行，不会有“空窗期”中断服务。
+
+查看完整的pod的情况
+
+```shell
+kubectl describe deploy ngx-dep
+```
+
+7.更新之后，可以回退
+
+```shell
+#查看历史
+kubectl rollout history deploy ngx-dep
+kubectl rollout history deploy --revision=2
+#回退到上一个版本
+kubectl rollout undo deploy ngx-dep # 也可以加上参数 --to-revision 回退到任意一个历史版本：
+```
+
+8.如果需要对版本更新添加说明，可以使用 annotation
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngx-dep
+  annotations:
+    kubernetes.io/change-cause: v1, ngx=1.21
+... ...
+```
+
+小结:
+
+滚动更新，它会自动缩放新旧版本的 Pod 数量，能够在用户无感知的情况下实现服务升级或降级，让原本复杂棘手的运维工作变得简单又轻松。
+
+1. 在 Kubernetes 里应用的版本不仅仅是容器镜像，而是整个 Pod 模板，为了便于处理使用了摘要算法，计算模板的 Hash 值作为版本号。
+2. Kubernetes 更新应用采用的是滚动更新策略，减少旧版本 Pod 的同时增加新版本 Pod，保证在更新过程中服务始终可用。
+3. 管理应用更新使用的命令是 kubectl rollout，子命令有 status、history、undo 等。
+4. Kubernetes 会记录应用的更新历史，可以使用 history --revision 查看每个版本的详细信息，也可以在每次更新时添加注解 kubernetes.io/change-cause。
