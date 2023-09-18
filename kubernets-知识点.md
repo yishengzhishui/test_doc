@@ -2640,7 +2640,6 @@ Service 原本的目的是负载均衡，应该由它在 Pod 前面来转发流�
 
 ![image.png](./assets/1694703592184-image.png)
 
-
 #### 如何实现 StatefulSet 的数据持久化
 
 为了强调持久化存储与 StatefulSet 的一对一绑定关系，Kubernetes 为 StatefulSet 专门定义了一个字段**volumeClaimTemplates**，直接把 PVC 定义嵌入 StatefulSet 的 YAML 文件里。这样能保证创建 StatefulSet 的同时，就会为每个 Pod 自动创建 PVC，让 StatefulSet 的可用性更高。
@@ -2692,7 +2691,6 @@ spec:
 
 ![image.png](./assets/1694703709682-image.png)
 
-
 ```shell
 #测试
 kubectl apply -f redis-pv-sts.yml
@@ -2706,7 +2704,6 @@ kubectl delete pod redis-pv-sts-0
 kubectl exec -it redis-pv-sts-0 -- redis-cli
 查看是否数据还在
 ```
-
 
 小结：
 
