@@ -2842,3 +2842,149 @@ metadata:
 2. Kubernetes 更新应用采用的是滚动更新策略，减少旧版本 Pod 的同时增加新版本 Pod，保证在更新过程中服务始终可用。
 3. 管理应用更新使用的命令是 kubectl rollout，子命令有 status、history、undo 等。
 4. Kubernetes 会记录应用的更新历史，可以使用 history --revision 查看每个版本的详细信息，也可以在每次更新时添加注解 kubernetes.io/change-cause。
+
+
+### 保障Pod健康运行
+
+资源配额 Resources、检查探针 Probe，它们能够给 Pod 添加各种运行保障，让应用运行得更健康。
+
+#### 资源配额 Resources
+
+具体的申请方法很简单，只要在 Pod 容器的描述部分添加一个新字段 resources 就可以了，它就相当于申请资源的 Claim。
+
+示例
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ngx-pod-resources
+
+spec:
+  containers:
+  - image: nginx:alpine
+    name: ngx
+
+    resources:
+      requests:
+        cpu: 10m
+        memory: 100Mi
+      limits:
+        cpu: 20m
+        memory: 200Mi
+```
+
+这个 YAML它向系统申请的是 1% 的 CPU 时间和 100MB 的内存，运行时的资源上限是 2%CPU 时间和 200MB 内存。有了这个申请，Kubernetes 就会在集群中查找最符合这个资源要求的节点去运行 Pod。
+
+containers.resources，它下面有两个字段：
+
+* “requests”，意思是容器要申请的资源，也就是说要求 Kubernetes 在创建 Pod 的时候必须分配这里列出的资源，否则容器就无法运行。
+* “limits”，意思是容器使用资源的上限，不能超过设定值，否则就有可能被强制停止运行。
+* 内存的写法和磁盘容量一样，使用 Ki、Mi、Gi 来表示 KB、MB、GB，比如 512Ki、100Mi、0.5Gi 等。
+* Kubernetes 里 CPU 的最小使用单位是 0.001，为了方便表示用了一个特别的单位 m，也就是“milli”“毫”的意思，比如说 500m 就相当于 0.5。
+
+如果 Pod 不写 resources 字段，这就意味着 Pod 对运行的资源要求“既没有下限，也没有上限”，Kubernetes 不用管 CPU 和内存是否足够，可以把 Pod 调度到任意的节点上，而且后续 Pod 运行时也可以无限制地使用 CPU 和内存。
+
+#### 什么是容器状态探针
+
+Kubernetes 为检查应用状态定义了三种探针，它们分别对应容器不同的状态：
+
+1. Startup，启动探针，用来检查应用是否已经启动成功，适合那些有大量初始化工作要做，启动很慢的应用。
+2. Liveness，存活探针，用来检查应用是否正常运行，是否存在死锁、死循环。
+3. Readiness，就绪探针，用来检查应用是否可以接收流量，是否能够对外提供服务。
+
+如果一个 Pod 里的容器配置了探针，Kubernetes 在启动容器后就会不断地调用探针来检查容器的状态：
+
+1. 如果 Startup 探针失败，Kubernetes 会认为容器没有正常启动，就会尝试反复重启，当然其后面的 Liveness 探针和 Readiness 探针也不会启动。
+2. 如果 Liveness 探针失败，Kubernetes 就会认为容器发生了异常，也会重启容器。
+3. 如果 Readiness 探针失败，Kubernetes 会认为容器虽然在运行，但内部有错误，不能正常提供服务，就会把容器从 Service 对象的负载均衡集合中排除，不会给它分配流量。
+
+![image.png](./assets/1695119260745-image.png)
+
+
+#### 如何使用容器状态探针
+
+startupProbe、livenessProbe、readinessProbe 这三种探针的配置方式都是一样的，关键字段有这么几个：
+
+* periodSeconds，执行探测动作的时间间隔，默认是 10 秒探测一次。
+* timeoutSeconds，探测动作的超时时间，如果超时就认为探测失败，默认是 1 秒。
+* successThreshold，连续几次探测成功才认为是正常，对于 startupProbe 和 livenessProbe 来说它只能是 1。
+* failureThreshold，连续探测失败几次才认为是真正发生了异常，默认是 3 次。
+
+至于探测方式，Kubernetes 支持 3 种：Shell、TCP Socket、HTTP GET，它们也需要在探针里配置：
+
+1. exec，执行一个 Linux 命令，比如 ps、cat 等等，和 container 的 command 字段很类似。
+2. tcpSocket，使用 TCP 协议尝试连接容器的指定端口。
+3. httpGet，连接端口并发送 HTTP GET 请求。
+
+目前最常使用的还是**HTTP GET Action**
+
+要使用这些探针，我们必须要在开发应用时预留出“检查口”，这样 Kubernetes 才能调用探针获取信息。这里我还是以 Nginx 作为示例，用 ConfigMap 编写一个配置文件：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ngx-conf
+
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location = /ready {
+        return 200 'I am ready';
+      }
+    }
+```
+
+在这个配置文件里，我们启用了 80 端口，然后用 location 指令定义了 HTTP 路径 /ready，它作为对外暴露的“检查口”，用来检测就绪状态，返回简单的 200 状态码和一个字符串表示工作正常。
+
+三种探测的例子：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ngx-pod-probe
+
+spec:
+  volumes:
+  - name: ngx-conf-vol
+    configMap:
+      name: ngx-conf
+
+  containers:
+  - image: nginx:alpine
+    name: ngx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - mountPath: /etc/nginx/conf.d
+      name: ngx-conf-vol
+
+    startupProbe:
+      periodSeconds: 1
+      exec:
+        command: ["cat", "/var/run/nginx.pid"]
+
+    livenessProbe:
+      periodSeconds: 10
+      tcpSocket:
+        port: 80
+
+    readinessProbe:
+      periodSeconds: 5
+      httpGet:
+        path: /ready
+        port: 80
+```
+
+* StartupProbe 使用了 Shell 方式，使用 cat 命令检查 Nginx 存在磁盘上的进程号文件（/var/run/nginx.pid），如果存在就认为是启动成功，它的执行频率是每秒探测一次。
+* LivenessProbe 使用了 TCP Socket 方式，尝试连接 Nginx 的 80 端口，每 10 秒探测一次。
+* ReadinessProbe 使用的是 HTTP GET 方式，访问容器的 /ready 路径，每 5 秒发一次请求。
+
+小结：
+
+* 资源配额使用的是 cgroup 技术，可以限制容器使用的 CPU 和内存数量，让 Pod 合理利用系统资源，也能够让 Kubernetes 更容易调度 Pod。
+* Kubernetes 定义了 Startup、Liveness、Readiness 三种健康探针，它们分别探测应用的启动、存活和就绪状态。
+* 探测状态可以使用 Shell、TCP Socket、HTTP Get 三种方式，还可以调整探测的频率和超时时间等参数。
