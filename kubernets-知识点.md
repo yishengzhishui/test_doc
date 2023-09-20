@@ -3154,3 +3154,205 @@ spec:
 2. ResourceQuota 对象可以为名字空间添加资源配额，限制全局的 CPU、内存和 API 对象数量。
 3. LimitRange 对象可以为容器或者 Pod 添加默认的资源配额，简化对象的创建工作。
 4. **Pod** 是 Kubernetes 中最小的可部署单元，它可以包含一个或多个容器。 当两者的limit冲突时，选更小的那个。
+
+### 系统监控-Metrics Server和Prometheus
+
+#### Metrics Server
+
+性能分析，Kubernetes 也提供 `kubectl top`，不过默认情况下这个命令不会生效，必须要安装一个插件 `Metrics Server` 才可以。
+
+1.下载文件
+
+```shell
+wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+2.修改文件：在 Metrics Server 的 Deployment 对象里，加上一个额外的运行参数 --kubelet-insecure-tls
+
+这是因为 Metrics Server 默认使用 TLS 协议，要验证证书才能与 kubelet 实现安全通信，而我们的实验环境里没有这个必要，加上这个参数可以让我们的部署工作简单很多（生产环境里就要慎用）。
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  ... ... 
+  template:
+    spec:
+      containers:
+      - args:
+        - --kubelet-insecure-tls
+        ... ... 
+```
+
+3.下载Metrics Server镜像
+
+```shell
+repo=registry.aliyuncs.com/google_containers
+
+name=k8s.gcr.io/metrics-server/metrics-server:v0.6.1
+src_name=metrics-server:v0.6.1
+
+docker pull $repo/$src_name
+
+docker tag $repo/$src_name $name
+docker rmi $repo/$src_name
+```
+
+4.部署
+
+```shell
+kubectl apply -f components.yaml
+```
+
+Metrics Server 属于名字空间“kube-system”，可以用 kubectl get pod 加上 -n 参数查看它是否正常运行：`kubectl get pod -n kube-system`
+
+```shell
+kubectl top node
+kubectl top pod -n kube-system
+```
+
+#### HorizontalPodAutoscaler-水平自动伸缩
+
+kubectl scale，可以任意增减 Deployment 部署的 Pod 数量，也就是水平方向的“扩容”和“缩容”，但是需要人工手动操作。
+
+Kubernetes 为此就定义了一个新的 API 对象，叫做“HorizontalPodAutoscaler”，简称是“hpa”。顾名思义，它是专门用来自动伸缩 Pod 数量的对象，适用于 Deployment 和 StatefulSet，但不能用于 DaemonSet（因为DaemonSet本身就是每个节点一个）。
+
+HorizontalPodAutoscaler 的能力完全基于 Metrics Server，它从 Metrics Server 获取当前应用的运行指标，主要是 CPU 使用率，再依据预定的策略增加或者减少 Pod 的数量。
+
+下面我们就来看看该怎么使用 HorizontalPodAutoscaler，首先要定义 Deployment 和 Service，创建一个 Nginx 应用，作为自动伸缩的目标对象：
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ngx-hpa-dep
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ngx-hpa-dep
+
+  template:
+    metadata:
+      labels:
+        app: ngx-hpa-dep
+    spec:
+      containers:
+      - image: nginx:alpine
+        name: nginx
+        ports:
+        - containerPort: 80
+
+        resources:
+          requests:
+            cpu: 50m
+            memory: 10Mi
+          limits:
+            cpu: 100m
+            memory: 20Mi
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ngx-hpa-svc
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: ngx-hpa-dep
+```
+
+在这个 YAML 里我只部署了一个 Nginx 实例，名字是 ngx-hpa-dep。注意在**它的 spec 里一定要用 resources 字段写清楚资源配额**，否则 HorizontalPodAutoscaler 会无法获取 Pod 的指标，也就无法实现自动化扩缩容。
+
+接下来我们要用命令 `kubectl autoscale` 创建一个 HorizontalPodAutoscaler 的样板 YAML 文件
+
+它有三个参数：
+
+* min，Pod 数量的最小值，也就是缩容的下限。
+* max，Pod 数量的最大值，也就是扩容的上限。
+* cpu-percent，CPU 使用率指标，当大于这个值时扩容，小于这个值时缩容。
+
+```shell
+export out="--dry-run=client -o yaml"              # 定义Shell变量
+kubectl autoscale deploy ngx-hpa-dep --min=2 --max=10 --cpu-percent=5 $out
+```
+
+得到文件
+
+```yaml
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ngx-hpa
+
+spec:
+  maxReplicas: 10
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ngx-hpa-dep
+  targetCPUUtilizationPercentage: 5
+```
+
+#### Prometheus
+
+Prometheus 系统的核心是它的 Server，里面有一个时序数据库 TSDB，用来存储监控数据，
+
+另一个组件 Retrieval 使用拉取（Pull）的方式从各个目标收集数据，再通过 HTTP Server 把这些数据交给外界使用。
+
+在 Prometheus Server 之外还有三个重要的组件：
+
+Push Gateway，用来适配一些特殊的监控目标，把默认的 Pull 模式转变为 Push 模式。
+
+Alert Manager，告警中心，预先设定规则，发现问题时就通过邮件等方式告警。
+
+Grafana 是图形化界面，可以定制大量直观的监控仪表盘。
+
+1.下载
+
+```shell
+wget https://github.com/prometheus-operator/kube-prometheus/archive/refs/tags/v0.11.0.tar.gz
+```
+
+2.是修改 prometheus-service.yaml、grafana-service.yaml
+
+这两个文件定义了 Prometheus 和 Grafana 服务对象，我们可以给它们添加 type: NodePort，这样就可以直接通过节点的 IP 地址访问（当然你也可以配置成 Ingress）。
+
+3.第二步，是修改 kubeStateMetrics-deployment.yaml、prometheusAdapter-deployment.yaml，
+
+因为它们里面有两个存放在 gcr.io 的镜像，必须解决下载镜像的问题。
+
+```shell
+image: k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.5.0
+image: k8s.gcr.io/prometheus-adapter/prometheus-adapter:v0.9.1
+
+image: chronolaw/kube-state-metrics:v2.5.0
+image: chronolaw/prometheus-adapter:v0.9.1
+```
+
+4. 部署
+
+```shell
+kubectl create -f manifests/setup
+kubectl create -f manifests
+```
+
+Prometheus 的对象都在名字空间“monitoring”里，创建之后可以用 kubectl get 来查看状态：
+
+```shell
+kubectl get svc -n monitoring # 查看端口
+```
+
+小结：
+
+1. Metrics Server 是一个 Kubernetes 插件，能够收集系统的核心资源指标，相关的命令是 kubectl top。
+2. Prometheus 是云原生监控领域的“事实标准”，用 PromQL 语言来查询数据，配合 Grafana 可以展示直观的图形界面，方便监控。
+3. HorizontalPodAutoscaler 实现了应用的自动水平伸缩功能，它从 Metrics Server 获取应用的运行指标，再实时调整 Pod 数量，可以很好地应对突发流量。
