@@ -2712,7 +2712,6 @@ kubectl exec -it redis-pv-sts-0 -- redis-cli
 3. 访问 StatefulSet 应该使用每个 Pod 的单独域名，形式是“Pod 名. 服务名”，不应该使用 Service 的负载均衡功能。
 4. 在 StatefulSet 里可以用字段“volumeClaimTemplates”直接定义 PVC，让 Pod 实现数据持久化存储。
 
-
 ### 滚动更新-Kubectl rollout
 
 在 Kubernetes 里，使用命令 `kubectl scale`，我们就可以轻松调整 Deployment 下属的 Pod 数量，
@@ -2843,7 +2842,6 @@ metadata:
 3. 管理应用更新使用的命令是 kubectl rollout，子命令有 status、history、undo 等。
 4. Kubernetes 会记录应用的更新历史，可以使用 history --revision 查看每个版本的详细信息，也可以在每次更新时添加注解 kubernetes.io/change-cause。
 
-
 ### 保障Pod健康运行
 
 资源配额 Resources、检查探针 Probe，它们能够给 Pod 添加各种运行保障，让应用运行得更健康。
@@ -2900,7 +2898,6 @@ Kubernetes 为检查应用状态定义了三种探针，它们分别对应容器
 3. 如果 Readiness 探针失败，Kubernetes 会认为容器虽然在运行，但内部有错误，不能正常提供服务，就会把容器从 Service 对象的负载均衡集合中排除，不会给它分配流量。
 
 ![image.png](./assets/1695119260745-image.png)
-
 
 #### 如何使用容器状态探针
 
@@ -2988,3 +2985,172 @@ spec:
 * 资源配额使用的是 cgroup 技术，可以限制容器使用的 CPU 和内存数量，让 Pod 合理利用系统资源，也能够让 Kubernetes 更容易调度 Pod。
 * Kubernetes 定义了 Startup、Liveness、Readiness 三种健康探针，它们分别探测应用的启动、存活和就绪状态。
 * 探测状态可以使用 Shell、TCP Socket、HTTP Get 三种方式，还可以调整探测的频率和超时时间等参数。
+
+### 集群管理-名字空间
+
+**Kubernetes 的名字空间并不是一个实体对象，只是一个逻辑上的概念。**
+
+它可以把集群切分成一个个彼此独立的区域，然后我们把对象放到这些区域里，就实现了类似容器技术里 namespace 的隔离效果，应用只能在自己的名字空间里分配资源和运行，不会干扰到其他名字空间里的应用。
+
+#### 如何使用名字空间
+
+Kubernetes 初始化集群的时候也会预设 4 个名字空间：default、kube-system、kube-public、kube-node-lease。我们常用的是前两个，default 是用户对象默认的名字空间，kube-system 是系统组件所在的名字空间
+
+名字空间也是一种 API 对象，使用命令 `kubectl api-resources` 可以看到它的简称是“ns”，命令 kubectl create 不需要额外的参数，可以很容易地创建一个名字空间，比如：
+
+```shell
+kubectl create ns test-ns 
+kubectl get ns
+```
+
+想要把一个对象放入特定的名字空间，需要在它的 `metadata` 里添加一个 `namespace` 字段:
+
+```shell
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ngx
+  namespace: test-ns
+
+spec:
+  containers:
+  - image: nginx:alpine
+    name: ngx
+```
+
+kubectl apply 创建这个对象之后，我们直接用 kubectl get 是看不到它的，**因为默认查看的是“default”名字空间**，想要操作其他名字空间的对象必须要用 -n 参数明确指定：`kubectl get pod -n test-ns`
+
+因为名字空间里的对象都从属于名字空间，所以在删除名字空间的时候一定要小心，一旦名字空间被删除，**它里面的所有对象也都会消失。**
+
+#### 什么是资源配额
+
+名字空间的资源配额需要使用一个专门的 API 对象，叫做 ResourceQuota，简称是 quota，我们可以使用命令 kubectl create 创建一个它的样板文件：
+
+```shell
+export out="--dry-run=client -o yaml"
+kubectl create quota dev-qt $out
+```
+
+因为资源配额对象必须依附在某个名字空间上，所以在它的 metadata 字段里必须明确写出 namespace（否则就会应用到 default 名字空间）。
+
+示例：先创建一个名字空间“dev-ns”，再创建一个资源配额对象“dev-qt”
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-ns
+
+---
+
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev-qt
+  namespace: dev-ns
+
+spec:
+  ... ...
+```
+
+在 ResourceQuota 里可以设置各类资源配额，字段非常多:
+
+* CPU 和内存配额，使用 request.*、limits.*，这是和容器资源限制是一样的。
+* 存储容量配额，使 requests.storage 限制的是 PVC 的存储总量，也可以用 persistentvolumeclaims 限制 PVC 的个数。
+* 核心对象配额，使用对象的名字（英语复数形式），比如 pods、configmaps、secrets、services。
+* 其他 API 对象配额，使用 count/name.group 的形式，比如 count/jobs.batch、count/deployments.apps。
+
+示例：
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: dev-qt
+  namespace: dev-ns
+
+spec:
+  hard:
+    requests.cpu: 10
+    requests.memory: 10Gi
+    limits.cpu: 10
+    limits.memory: 20Gi
+
+    requests.storage: 100Gi
+    persistentvolumeclaims: 100
+
+    pods: 100
+    configmaps: 100
+    secrets: 100
+    services: 10
+
+    count/jobs.batch: 1
+    count/cronjobs.batch: 1
+    count/deployments.apps: 1
+```
+
+解释：
+
+* 所有 Pod 的需求总量最多是 10 个 CPU 和 10GB 的内存，上限总量是 10 个 CPU 和 20GB 的内存。
+* 只能创建 100 个 PVC 对象，使用 100GB 的持久化存储空间。
+* 只能创建 100 个 Pod，100 个 ConfigMap，100 个 Secret，10 个 Service。
+* 只能创建 1 个 Job，1 个 CronJob，1 个 Deployment。
+
+#### 如何使用资源配额
+
+```shell
+kubectl apply -f quota-ns.yml
+kubectl get quota -n dev-ns
+kubectl describe quota -n dev-ns # 查看详情
+```
+
+#### 默认资源配额
+
+在名字空间加上了资源配额限制之后，它会有一个合理但比较“烦人”的约束：要求所有在里面运行的 Pod 都必须用字段 resources 声明资源需求，否则就无法创建。
+
+如果 Pod 里没有 resources 字段，就可以无限制地使用 CPU 和内存，这显然与名字空间的资源配额相冲突。为了保证名字空间的资源总量可管可控，**Kubernetes 就只能拒绝创建这样的 Pod 了**。
+
+```shell
+kubectl run ngx --image=nginx:alpine -n dev-ns #会有错误 forbbiden
+```
+
+这个时候就要用到一个很小但很有用的辅助对象了—— `LimitRange`，简称是 limits，它能为 API 对象添加默认的资源配额限制。
+
+* spec.limits 是它的核心属性，描述了默认的资源限制。
+* type 是要限制的对象类型，可以是 Container、Pod、PersistentVolumeClaim。
+* default 是默认的资源上限，对应容器里的 resources.limits，只适用于 Container。
+* defaultRequest 默认申请的资源，对应容器里的 resources.requests，同样也只适用于 Container。
+* max、min 是对象能使用的资源的最大最小值。
+
+示例：
+
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dev-limits
+  namespace: dev-ns
+
+spec:
+  limits:
+  - type: Container
+    defaultRequest:
+      cpu: 200m
+      memory: 50Mi
+    default:
+      cpu: 500m
+      memory: 100Mi
+  - type: Pod
+    max:
+      cpu: 800m
+      memory: 200Mi
+```
+
+解释：它设置了每个容器默认申请 0.2 的 CPU 和 50MB 内存，容器的资源上限是 0.5 的 CPU 和 100MB 内存，每个 Pod 的最大使用量是 0.8 的 CPU 和 200MB 内存。
+
+小结：
+
+1. 名字空间是一个逻辑概念，没有实体，它的目标是为资源和对象划分出一个逻辑边界，避免冲突。
+2. ResourceQuota 对象可以为名字空间添加资源配额，限制全局的 CPU、内存和 API 对象数量。
+3. LimitRange 对象可以为容器或者 Pod 添加默认的资源配额，简化对象的创建工作。
+4. **Pod** 是 Kubernetes 中最小的可部署单元，它可以包含一个或多个容器。 当两者的limit冲突时，选更小的那个。
