@@ -187,7 +187,6 @@ Kafka 与 ZooKeeper 相关的最重要的参数当属`zookeeper.connect`。
 
 如果你有两套 Kafka 集群，假设分别叫它们 kafka1 和 kafka2，那么两套集群的zookeeper.connect参数可以这样指定：`zk1:2181,zk2:2181,zk3:2181/kafka1`和`zk1:2181,zk2:2181,zk3:2181/kafka2`。**切记 chroot 只需要写一次，而且是加到最后的**。我经常碰到有人这样指定：`zk1:2181/kafka1,zk2:2181/kafka2,zk3:2181/kafka3`，**这样的格式是不对的**。
 
-
 ##### Broker 连接相关
 
 1. listeners：学名叫监听器，其实就是告诉外部连接者要通过什么协议访问指定主机名和端口开放的 Kafka 服务。
@@ -233,7 +232,6 @@ auto.create.topics.enable参数**最好设置成 false，即不允许自动创�
 
 ![image.png](./assets/1696762348235-image.png)
 
-
 #### Topic 级别
 
 如果同时设置了 Topic 级别参数和全局 Broker 参数，**Topic 级别参数会覆盖全局 Broker 参数的值**，而每个 Topic 都能设置自己的参数值，这就是所谓的 Topic 级别参数。例如消息数据的留存时间参数，不同Topic可以根据需要设置。
@@ -259,7 +257,6 @@ bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic transacti
 ```
 
 我们只需要知道 Kafka 开放了`kafka-topics`命令供我们来创建 Topic 即可。对于上面这样一条命令，请注意结尾处的`--config`设置，我们就是在 config 后面指定了想要设置的 Topic 级别参数。
-
 
 下面看看使用另一个自带的命令kafka-configs来修改 Topic 级别参数。假设我们现在要发送最大值是 10MB 的消息，该如何修改呢？命令如下：
 
@@ -371,3 +368,84 @@ return Math.abs(key.hashCode()) % partitions.size();
 切记分区是实现负载均衡以及高吞吐量的关键，故在生产者这一端就要仔细盘算合适的分区策略，避免造成消息数据的“倾斜”，使得某些分区成为性能瓶颈，这样极易引发下游数据消费的性能下降。
 
 ![image.png](./assets/1696840730180-image.png)
+
+### 10 生产者压缩算法
+
+它秉承了用时间去换空间的经典 trade-off 思想，具体来说就是用 CPU 时间去换磁盘空间或网络 I/O 传输量，希望以较小的 CPU 开销带来更少的磁盘占用或更少的网络 I/O 传输。
+
+#### 怎么压缩
+
+目前 Kafka 共有两大类消息格式，社区分别称之为 V1 版本和 V2 版本。V2 版本是 Kafka 0.11.0.0 中正式引入的。
+
+不论是哪个版本，Kafka 的消息层次都分为两层：消息集合（message set）以及消息（message）。一个消息集合中包含若干条日志项（record item），而日志项才是真正封装消息的地方。
+
+V2 版本还有一个和压缩息息相关的改进，就是保存压缩消息的方法发生了变化。之前 V1 版本中保存压缩消息的方法是把多条消息进行压缩然后保存到外层消息的消息体字段中；而 V2 版本的做法是对整个消息集合进行压缩。显然后者应该比前者有更好的压缩效果。
+
+#### 何时压缩
+
+在 Kafka 中，压缩可能发生在两个地方：生产者端和 Broker 端。
+
+##### 生产者端：
+
+生产者程序中配置 compression.type 参数即表示启用指定类型的压缩算法。比如下面这段程序代码展示了如何构建一个开启 GZIP 的 Producer 对象：
+
+```java
+ Properties props = new Properties();
+ props.put("bootstrap.servers", "localhost:9092");
+ props.put("acks", "all");
+ props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+ props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+ // 开启GZIP压缩
+ props.put("compression.type", "gzip");
+ 
+ Producer<String, String> producer = new KafkaProducer<>(props);
+```
+
+这里比较关键的代码行是 `props.put(“compression.type”, “gzip”)`，它表明该 Producer 的压缩算法使用的是 GZIP。这样 Producer 启动后生产的每个消息集合都是经 GZIP 压缩过的，故而能很好地节省网络传输带宽以及 Kafka Broker 端的磁盘占用。
+
+##### Broker端
+
+大部分情况下 Broker 从 Producer 端接收到消息后仅仅是原封不动地保存而不会对其进行任何修改，但这里的“大部分情况”也是要满足一定条件的。有两种例外情况就可能让 Broker 重新压缩消息。
+
+1.Broker 端指定了和 Producer 端不同的压缩算法。
+
+Broker 端也有一个参数叫 `compression.type`，但是这个参数的默认值是 producer，这表示 **Broker 端会“尊重”Producer 端使用的压缩算法**。
+
+可一旦你在 Broker 端设置了不同的 `compression.type` 值，就一定要小心了，因为可能会发生预料之外的压缩/解压缩操作，通常表现为 Broker 端 CPU 使用率飙升。
+
+2.Broker 端发生了消息格式转换。
+
+所谓的消息格式转换主要是为了兼容老版本的消费者程序
+
+在一个生产环境中，Kafka 集群中同时保存多种版本的消息格式非常常见。
+
+为了兼容老版本的格式，Broker 端会对新版本消息执行向老版本格式的转换。这个过程中会涉及消息的解压缩和重新压缩。一般情况下这种消息格式转换对性能是有很大影响的，除了这里的压缩之外，它还让 Kafka 丧失了引以为豪的 Zero Copy 特性。
+
+所谓“Zero Copy”就是“零拷贝”，说的是当数据在磁盘和网络进行传输时避免昂贵的内核态数据拷贝，从而实现快速的数据传输（”零拷贝“发生在broker到consumer的链路）。
+
+#### 何时解压缩
+
+有压缩必有解压缩！通常来说解压缩发生在消费者程序中。
+
+Kafka 会将启用了哪种压缩算法封装进消息集合中，这样当 Consumer 读取到消息集合时，它自然就知道了这些消息使用的是哪种压缩算法。如果用一句话总结一下压缩和解压缩：**Producer 端压缩、Broker 端保持、Consumer 端解压缩**。
+
+除了在 Consumer 端解压缩，Broker 端也会进行解压缩。注意了，这和前面提到消息格式转换时发生的解压缩是不同的场景。每个压缩过的消息集合在 Broker 端写入时都要发生解压缩操作，目的就是为了对消息执行各种验证。(这个解压缩的过程并不是为了还原消息的可读形式，而是为了在存储之前执行各种验证操作，以确保消息的质量和合法性。解压缩后的消息仍然保留在 Kafka 内部的二进制格式，而不是还原为原始的、可读的消息)
+
+#### 压缩算法对比
+
+
+在实际使用中，GZIP、Snappy、LZ4 甚至是 zstd 的表现各有千秋。
+
+但对于 Kafka 而言，它们的性能测试结果却出奇得一致，
+
+即在吞吐量方面：LZ4 > Snappy > zstd 和 GZIP；
+
+而在压缩比方面，zstd > LZ4 > GZIP > Snappy。
+
+具体到物理资源，使用 Snappy 算法占用的网络带宽最多，zstd 最少，这是合理的，毕竟 zstd 就是要提供超高的压缩比；在 CPU 使用率方面，各个算法表现得差不多，只是在压缩时 Snappy 算法使用的 CPU 较多一些，而在解压缩时 GZIP 算法则可能使用更多的 CPU。
+
+
+* 用压缩的一个条件就是 Producer 程序运行机器上的 CPU 资源要很充足
+* 如果你的客户端机器 CPU 资源有很多富余，我强烈建议你开启 zstd 压缩，这样能极大地节省网络资源消耗。
+
+![image.png](./assets/1696847481540-image.png)
