@@ -235,3 +235,79 @@ auto.create.topics.enable参数**最好设置成 false，即不允许自动创�
 
 
 #### Topic 级别
+
+如果同时设置了 Topic 级别参数和全局 Broker 参数，**Topic 级别参数会覆盖全局 Broker 参数的值**，而每个 Topic 都能设置自己的参数值，这就是所谓的 Topic 级别参数。例如消息数据的留存时间参数，不同Topic可以根据需要设置。
+
+##### 消息保存参数
+
+* retention.ms：规定了该 Topic 消息被保存的时长。默认是 7 天，即该 Topic 只保存最近 7 天的消息。一旦设置了这个值，它会覆盖掉 Broker 端的全局参数值。
+* retention.bytes：规定了要为该 Topic 预留多大的磁盘空间。和全局参数作用相似，这个值通常在多租户的 Kafka 集群中会有用武之地。当前默认值是 -1，表示可以无限使用磁盘空间。
+* max.message.bytes：它决定了 Kafka Broker 能够正常接收该 Topic 的最大消息大小(**该参数跟 message.max.bytes 参数的作用是一样的，只不过 max.message.bytes 是作用于某个 topic，而 message.max.bytes 是作用于全局。**)
+
+##### 参数设置
+
+两种设置方式：创建 Topic 时进行设置、修改 Topic 时设置
+
+例子：
+
+1、如何在创建 Topic 时设置这些参数
+
+设想你的部门需要将交易数据发送到 Kafka 进行处理，需要保存最近半年的交易数据，同时这些数据很大，通常都有几 MB，但一般不会超过 5MB。现在让我们用以下命令来创建 Topic：
+
+```shell
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic transaction --partitions 1 --replication-factor 1 --config retention.ms=15552000000 --config max.message.bytes=5242880
+```
+
+我们只需要知道 Kafka 开放了`kafka-topics`命令供我们来创建 Topic 即可。对于上面这样一条命令，请注意结尾处的`--config`设置，我们就是在 config 后面指定了想要设置的 Topic 级别参数。
+
+
+下面看看使用另一个自带的命令kafka-configs来修改 Topic 级别参数。假设我们现在要发送最大值是 10MB 的消息，该如何修改呢？命令如下：
+
+```shell
+bin/kafka-configs.sh --zookeeper localhost:2181 --entity-type topics --entity-name transaction --alter --add-config max.message.bytes=10485760
+```
+
+总体来说，你只能使用这么两种方式来设置 Topic 级别参数。**最好始终坚持使用第二种方式来设置**，并且在未来，Kafka 社区很有可能统一使用kafka-configs脚本来调整 Topic 级别参数。
+
+#### JVM 参数
+
+Kafka 服务器端代码是用 Scala 语言编写的，但终归还是编译成 Class 文件在 JVM 上运行，因此 JVM 参数设置对于 Kafka 集群的重要性不言而喻。
+
+JVM 端设置，堆大小这个参数至关重要，将你的 JVM 堆大小设置成 6GB 吧，这是目前业界比较公认的一个合理值。
+
+JVM 端垃圾回收器的设置，也就是平时常说的 GC 设置：
+
+如果你依然在使用 **Java 7**，那么可以根据以下法则选择合适的垃圾回收器：
+
+* 如果 Broker 所在机器的 CPU 资源非常充裕，建议使用 CMS 收集器。启用方法是指定-XX:+UseCurrentMarkSweepGC。否则，使用吞吐量收集器。开启方法是指定-XX:+UseParallelGC。
+
+如果使用Java 8，那么可以手动设置使用 G1 收集器
+
+##### 如何为kafka设置：
+
+设置下面两个参数：KAFKA_HEAP_OPTS：指定堆大小。KAFKA_JVM_PERFORMANCE_OPTS：指定 GC 参数。
+
+```shell
+$> export KAFKA_HEAP_OPTS=--Xms6g  --Xmx6g
+$> export KAFKA_JVM_PERFORMANCE_OPTS= -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true
+$> bin/kafka-server-start.sh config/server.properties
+```
+
+#### 操作系统参数
+
+* 文件描述符限制
+* 文件系统类型
+* Swappiness
+* 提交时间
+
+首先是ulimit -n。我觉得任何一个 Java 项目最好都调整下这个值。实际上，文件描述符系统资源并不像我们想象的那样昂贵，你不用太担心调大此值会有什么不利的影响。通常情况下将它设置成一个超大的值是合理的做法，比如ulimit -n 1000000。
+
+(在 Linux 系统中，一个长连接会占用一个 Socket 句柄（文件描述符），像 Ubuntu 默认是 1024，也就是最多 1024 个 Socket 长连接，Kafka 网络通信中大量使用长连接，这对比较大的 Kafka 集群来说可能是不够的。 为了避免 Socket 句柄不够用，将这个设置为一个比较大值是合理的。)
+
+其次是文件系统类型的选择。这里所说的文件系统指的是如 ext3、ext4 或 XFS 这样的日志型文件系统。根据官网的测试报告，XFS 的性能要强于 ext4，所以**生产环境最好还是使用 XFS**。对了，最近有个 Kafka 使用 ZFS 的数据报告，貌似性能更加强劲，有条件的话不妨一试。
+
+第三是 swap 的调优。网上很多文章都提到设置其为 0，将 swap 完全禁掉以防止 Kafka 进程使用 swap 空间。我个人反倒觉得还是不要设置成 0 比较好，我们可以设置成一个较小的值。为什么呢？因为一旦设置成 0，当物理内存耗尽时，操作系统会触发 OOM killer 这个组件，它会随机挑选一个进程然后 kill 掉，即根本不给用户任何的预警。但如果设置成一个比较小的值，当开始使用 swap 空间时，你至少能够观测到 Broker 性能开始出现急剧下降，从而给你进一步调优和诊断问题的时间。基于这个考虑，我个人建议将 swappniess 配置成一个接近 0 但不为 0 的值，比如 1。
+
+最后是提交时间或者说是 Flush 落盘时间。向 Kafka 发送数据并不是真要等数据被写入磁盘才会认为成功，而是只要数据被写入到操作系统的页缓存（Page Cache）上就可以了，随后操作系统根据 LRU 算法会定期将页缓存上的“脏”数据落盘到物理磁盘上。这个定期就是由提交时间来确定的，默认是 5 秒。一般情况下我们会认为这个时间太频繁了，可以适当地增加提交间隔来降低物理磁盘的写操作。当然你可能会有这样的疑问：如果在页缓存中的数据在写入到磁盘前机器宕机了，那岂不是数据就丢失了。的确，这种情况数据确实就丢失了，但鉴于 Kafka 在软件层面已经提供了多副本的冗余机制，因此这里稍微拉大提交间隔去换取性能还是一个合理的做法。
+
+![image.png](./assets/1696835867973-image.png)
