@@ -280,6 +280,18 @@ for _, value := range slice {
 
 *map* 是 Go 内建的[关联数据类型](http://zh.wikipedia.org/wiki/关联数组) （在一些其他的语言中也被称为 *哈希(hash)* 或者 *字典(dict)* ）。
 
+map的value可以是函数方法
+
+```go
+func TestMapWithFunValue(t *testing.T) {
+	m := map[int]func(op int) int{}
+	m[1] = func(op int) int { return op }
+	m[2] = func(op int) int { return op * op }
+	m[3] = func(op int) int { return op * op * op }
+	t.Log(m[1](2), m[2](2), m[3](2))
+}
+```
+
 ```go
 package main
 
