@@ -226,7 +226,7 @@ func main() {
     fmt.Println("apd:", s) //apd: [a b c d e f]
 
     c := make([]string, len(s))
-    copy(c, s)
+    copy(c, s)  //创建新的切片 copy数据，对于c的修改就不会影响到原来的切片s
     fmt.Println("cpy:", c) //cpy: [a b c d e f]
 
     l := s[2:5]
@@ -396,6 +396,7 @@ index: 0, value: 0x4e2d
 index: 3, value: 0x56fd
 index: 6, value: 0x4eba
 }
+可以使用 %c 格式化字符
 // result
 sum: 9
 index: 1
@@ -486,6 +487,8 @@ func main() {
 
 匿名函数和闭包
 
+当我们说一个函数是一个闭包时，我们指的是这个函数可以访问并且修改其外部作用域的变量。这些被访问的变量不是函数的参数，也不是函数内部声明的变量，而是在函数外部定义的。闭包在 Go 中通常是匿名函数。
+
 ```go
 package main
 
@@ -548,6 +551,39 @@ func main() {
     fmt.Println(fib(7))
 }
 ```
+
+defer() 函数
+
+
+`defer` 是 Go 语言的一个关键字，用于延迟执行一个函数调用。被 `defer` 关键字修饰的函数会在包含 `defer` 语句的函数执行结束时才被调用，而不论包含 `defer` 的函数是正常返回还是发生了 panic。
+
+`defer` 常常用于确保一些清理工作会被执行，或者在函数返回时记录日志等。`defer` 的典型应用场景包括文件操作中的关闭文件、解锁互斥锁、数据库连接的关闭等。
+
+以下是一个使用 `defer` 关键字的简单示例：
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Start")
+
+    // 在函数结束时调用 cleanup 函数
+    defer cleanup()
+
+    fmt.Println("Do some work")
+    // 模拟函数执行期间的其他操作
+
+    fmt.Println("End")
+}
+
+func cleanup() {
+    fmt.Println("Performing cleanup")
+}
+```
+
+在这个例子中，`cleanup` 函数被使用 `defer` 关键字推迟到 `main` 函数结束时执行，即使在 `main` 函数中的某个地方发生了 `panic`，`cleanup` 函数仍然会被执行。
 
 ## 指针
 
@@ -642,7 +678,7 @@ func main() {
 
     var pp **int = &p1
     println(**pp) // 5
-    pp = &p2    
+    pp = &p2  
     println(**pp) // 55
 }  
 ------------------
