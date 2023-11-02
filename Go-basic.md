@@ -422,7 +422,7 @@ key: b
 
 ## 函数：function
 
-参数传递
+### 参数传递
 
 ```go
 package main
@@ -449,7 +449,7 @@ func main() {
 }
 ```
 
-多返回值
+### 多返回值
 
 ```go
 package main
@@ -471,7 +471,7 @@ func main() {
 }
 ```
 
-可变参数函数
+### 可变参数函数
 
 ```go
 package main
@@ -497,7 +497,7 @@ func main() {
 }
 ```
 
-匿名函数和闭包
+### 匿名函数和闭包
 
 当我们说一个函数是一个闭包时，我们指的是这个函数可以访问并且修改其外部作用域的变量。这些被访问的变量不是函数的参数，也不是函数内部声明的变量，而是在函数外部定义的。闭包在 Go 中通常是匿名函数。
 
@@ -533,7 +533,7 @@ func main() {
 1
 ```
 
-递归
+### 递归
 
 ```go
 package main
@@ -564,8 +564,7 @@ func main() {
 }
 ```
 
-defer() 函数
-
+### defer() 函数
 
 `defer` 是 Go 语言的一个关键字，用于延迟执行一个函数调用。被 `defer` 关键字修饰的函数会在包含 `defer` 语句的函数执行结束时才被调用，而不论包含 `defer` 的函数是正常返回还是发生了 panic。
 
@@ -596,6 +595,58 @@ func cleanup() {
 ```
 
 在这个例子中，`cleanup` 函数被使用 `defer` 关键字推迟到 `main` 函数结束时执行，即使在 `main` 函数中的某个地方发生了 `panic`，`cleanup` 函数仍然会被执行。
+
+### panic
+
+在 Go 语言中，`panic` 是一个内建函数，用于引发运行时恐慌。当发生某些不可恢复的错误时，可以使用 `panic` 来中断程序的正常流程。`panic` 的调用会引发堆栈跟踪，显示错误发生的位置，以便于调试。
+
+`panic` 的基本用法是：
+
+```go
+func example() {
+    // ...
+
+    if somethingWentWrong {
+        panic("Something went wrong!")
+    }
+
+    // ...
+}
+```
+
+在上面的例子中，如果 `somethingWentWrong` 的条件成立，`panic` 将被调用，程序将中断并输出错误信息。
+
+另外，Go 还提供了 `recover` 函数，用于在延迟函数（`defer`）中捕获 `panic` 引发的错误，从而实现一定程度的错误恢复。`recover` 只有在延迟函数中调用时才有效，如果在非延迟函数中调用，它将返回 `nil`。
+
+以下是一个简单的例子，演示了 `panic` 和 `recover` 的用法：
+
+```go
+package main
+
+import "fmt"
+
+func recoverExample() {
+    defer func() {
+        if err := recover(); err != nil {
+            fmt.Println("Recovered:", err)
+        }
+    }()
+
+    // 引发 panic
+    panic("Something went wrong!")
+}
+
+func main() {
+    fmt.Println("Start")
+
+    // 调用包含 recover 的函数
+    recoverExample()
+
+    fmt.Println("End")
+}
+```
+
+在这个例子中，`recoverExample` 函数中的 `defer` 区块使用了 `recover`，用于捕获 `panic` 引发的错误，并输出错误信息。这样即使在发生 `panic` 后，程序仍然可以继续执行。
 
 ## 指针
 
@@ -994,7 +1045,7 @@ type person struct {
     name string
     age  int
 }
-
+// 代码定义了一个名为 newPerson 的函数，该函数用于创建并返回一个 person 结构体的指针
 func newPerson(name string) *person {
 
     p := person{name: name}
@@ -1042,7 +1093,7 @@ Sean
 
 其次，这样可以避免在每次调用方法时复制该值。若值的类型为大型结构体时，这样做会更加高效。
 
-值/指针接收器都可以用值或者指针调用
+值/指针接收器都可以用值或者指针调用，Go 会在需要的时候自动进行转换
 
 ```go
 package main
@@ -1063,14 +1114,20 @@ func (r rect) perim() int {
 }
 
 func main() {
+//这种赋值，r是这个结构体变量的值
     r := rect{width: 10, height: 5}
 
     fmt.Println("area: ", r.area())
     fmt.Println("perim:", r.perim())
-
-    rp := &r
+rp := &r
     fmt.Println("area: ", rp.area())
     fmt.Println("perim:", rp.perim())
+
+// 使用 new 创建 rect 结构体的实例，r 是指向该实例的指针
+	r := new(rect)
+	r.width = 3
+	r.height = 4
+
 }
 //result
 area:  50
@@ -1109,6 +1166,56 @@ func main() {
 ## 接口
 
 方法签名的集合叫做：_接口(Interfaces)_。
+
+多态例子：
+
+```go
+ package polymorphism
+
+import (
+	"fmt"
+	"testing"
+)
+
+type Code string
+type Programmer interface {
+	WriteHelloWorld() Code
+}
+
+type GoProgrammer struct {
+}
+
+func (p *GoProgrammer) WriteHelloWorld() Code {
+	return "fmt.Println(\"Hello World!\")"
+}
+
+type JavaProgrammer struct {
+}
+
+func (p *JavaProgrammer) WriteHelloWorld() Code {
+	return "System.out.Println(\"Hello World!\")"
+}
+
+func writeFirstProgram(p Programmer) {
+	fmt.Printf("%T %v\n", p, p.WriteHelloWorld())
+}
+
+func TestPolymorphism(t *testing.T) {
+	goProg := &GoProgrammer{} //WriteHelloWorld是指针接收器，所以需要用指针
+	javaProg := new(JavaProgrammer)
+	writeFirstProgram(goProg)
+	writeFirstProgram(javaProg)
+}
+
+```
+
+这个代码演示了多态性的概念。首先，定义了两个类型 `GoProgrammer` 和 `JavaProgrammer`，它们都实现了同一个接口 `Programmer` 中的 `WriteHelloWorld` 方法。
+
+然后，通过 `writeFirstProgram` 函数，将不同类型的程序员传入，并调用它们的 `WriteHelloWorld` 方法。这里使用了接口作为参数类型，不同类型的程序员实现了相同的接口方法，因此可以在函数中以相同的方式调用。
+
+在 `TestPolymorphism` 测试函数中，创建了一个 `GoProgrammer` 实例和一个 `JavaProgrammer` 实例，然后分别调用了 `writeFirstProgram` 函数。在函数内部，通过 `%T` 格式化符号打印了传入的具体类型和调用方法的结果。
+
+这样的设计体现了接口的多态性，同一个接口可以被不同的类型实现，从而在不改变接口的情况下调用不同类型的对象。
 
 ```go
 package main
@@ -1153,12 +1260,16 @@ func measure(g geometry) {
 func main() {
     r := rect{width: 3, height: 4}
     c := circle{radius: 5}
+//多态
 //结构体类型 circle 和 rect 都实现了 geometry 接口， 所以我们可以将其实例作为 measure 的参数
     measure(r)
     measure(c)
 }
+```
 
-------------------
+```go
+
+
 package main
 
 import (
@@ -1173,13 +1284,13 @@ type I interface {
 type T struct {
 	S string
 }
-
+//指针接收器
 func (t *T) M() {
 	fmt.Println(t.S)
 }
 
 type F float64
-
+//值接收器
 func (f F) M() {
 	fmt.Println(f)
 }
@@ -1195,10 +1306,21 @@ func main() {
 	describe(i)
 	i.M()
 }
-
+// describe() 函数用于打印接口的值和类型
 func describe(i I) {
 	fmt.Printf("(%v, %T)\n", i, i)
 }
+// 解释：
+当我们运行 main() 函数时，
+首先将 &T{"Hello"} 赋给 i，
+然后调用 describe(i) 打印 (Hello, *main.T)，
+最后调用 i.M() 输出 Hello。
+
+接着，将 F(math.Pi) 赋给 i，
+再次调用 describe(i) 打印 (3.141592653589793, main.F)，
+最后调用 i.M() 输出 3.141592653589793。
+这个里面M()方法的实现分别是指针接收器和值接收器，所以得到的接口的类型是不一样的
+
 // result
 (&{Hello}, *main.T)
 Hello
@@ -1259,13 +1381,144 @@ describe: base with num=1
 describer: base with num=1
 ```
 
-## 错误处理
-
-在 Go 语言中，如果一个类型实现了 Error() 方法，那么当该类型的实例作为错误值被返回时，将自动调用其 Error() 方法来生成错误信息的字符串表示。
+例子2：
 
 ```go
 package main
 
+import "fmt"
+
+// Animal 是一个基础的动物类型
+type Animal struct {
+	Name string
+}
+
+// Dog 是一个嵌入 Animal 的类型
+type Dog struct {
+	Animal   // 嵌入 Animal 类型
+	Breed    string
+}
+
+// Cat 是一个嵌入 Animal 的类型
+type Cat struct {
+	Animal   // 嵌入 Animal 类型
+	Color    string
+}
+
+func main() {
+	// 创建一个 Dog 实例
+	dog := Dog{
+		Animal: Animal{Name: "Buddy"},
+		Breed:  "Labrador",
+	}
+
+	// 创建一个 Cat 实例
+	cat := Cat{
+		Animal: Animal{Name: "Whiskers"},
+		Color:  "Orange",
+	}
+
+	// 访问 Dog 的属性
+	fmt.Printf("Dog Name: %s\n", dog.Name)
+	fmt.Printf("Dog Breed: %s\n", dog.Breed)
+
+	// 访问 Cat 的属性
+	fmt.Printf("Cat Name: %s\n", cat.Name)
+	fmt.Printf("Cat Color: %s\n", cat.Color)
+}
+```
+
+例子3：
+如果将内部的struct 看作父类，外部的看作子类；
+子类并不是真正的继承父类的方法，父类定义的方法无法访问子类的数据和方法
+
+```go
+package extension
+
+import (
+	"fmt"
+	"testing"
+)
+
+type Pet struct {
+}
+
+func (p *Pet) Speak() {
+	fmt.Print("...")
+}
+
+func (p *Pet) SpeakTo(host string) {
+	// 父类定义的方法无法访问子类的数据和方法
+	p.Speak()
+	fmt.Println(" ", host)
+}
+
+type Dog struct {
+	Pet
+}
+
+func (d *Dog) Speak() {
+	fmt.Print("Wang!")
+}
+
+func TestDog(t *testing.T) {
+	dog := new(Dog)
+	dog.Speak() //覆盖原来的方法
+	dog.SpeakTo("Chao")
+}
+//结果
+wang!
+...  Chao
+```
+
+例子4：
+在 Go 语言中，如果内部的结构体嵌套在外部结构体中，而且内部结构体和外部结构体都有同名的方法，那么外部结构体的方法会覆盖内部结构体的方法。这种方式称为方法的覆写（Method Overriding）。
+
+举例说明：
+
+```go
+package main
+
+import "fmt"
+
+type InnerStruct struct{}
+
+func (i InnerStruct) Method() {
+    fmt.Println("InnerStruct's Method")
+}
+
+type OuterStruct struct {
+    InnerStruct
+}
+
+func (o OuterStruct) Method() {
+    fmt.Println("OuterStruct's Method")
+}
+
+func main() {
+    outer := OuterStruct{}
+
+    // 调用 OuterStruct 的 Method 方法
+    outer.Method() // 输出：OuterStruct's Method
+
+    // 调用 InnerStruct 的 Method 方法
+    inner := outer.InnerStruct
+    inner.Method() // 输出：InnerStruct's Method
+}
+```
+
+在这个例子中，`OuterStruct` 包含了 `InnerStruct`，并且它们都有同名的 `Method` 方法。
+当我们通过 `OuterStruct` 实例调用 `Method` 方法时，调用的是外部结构体 `OuterStruct` 的方法。
+而如果我们直接使用内部结构体 `InnerStruct` 的实例调用 `Method` 方法，那么调用的是内部结构体 `InnerStruct` 的方法。
+
+## 错误处理
+
+在 Go 语言中，如果一个类型实现了 Error() 方法，**那么当该类型的实例作为错误值被返回时，将自动调用其 Error() 方法**来生成错误信息的字符串表示。
+
+在 Go 中，**一个类型的指针可以调用该类型的所有方法**，同时也可以调用该类型的指针接收器方法。
+
+```go
+package main
 import (
     "errors"
     "fmt"
@@ -1293,7 +1546,7 @@ func (e *argError) Error() string {
 
 func f2(arg int) (int, error) {
     if arg == 42 {
-
+// 因为Error()是指针接收器，所以这个要用&取地址，在调用方法的时候，并不会自动进行转换
         return -1, &argError{arg, "can't work with it"}
     }
     return arg + 3, nil
@@ -1315,8 +1568,14 @@ func main() {
             fmt.Println("f2 worked:", r)
         }
     }
+// 结果
+f1 worked: 10
+f1 failed: can't work with 42
+f2 worked: 10
+f2 failed: 42 - can't work with it
 
-# 类型断言e.(*argError)将错误值转换为类型为*argError的指针。
+
+# 类型断言e.(*argError)，检查e 是否是 *argError 类型的指针。
 # 如果转换成功，则变量ae保存了这个指针，同时变量ok的值为true。
 #在这种情况下，代码会输出ae.arg和ae.prob两个属性的值，即错误值中记录的参数值和错误信息。
     _, e := f2(42)
@@ -1338,11 +1597,83 @@ fmt.Println() 函数打印错误信息时，会自动调用其 Error() 方法来
 Error() 函数是 `*argError` 类型的指针接收器方法。在 Go 中，一个类型的指针可以调用该类型的所有方法，同时也可以调用该类型的指针接收器方法。因此，在这个例子中，`*argError` 类型的指针可以调用 Error()
 方法，而不需要使用 & 运算符来解引用指针。
 
-## 类型断言
+### panic and recover
+
+* panic用于不可以恢复的错误
+* panic推出前会执行defer指定的内容
+
+```go
+package panic_recover
+
+import (
+	"errors"
+	"fmt"
+	"testing"
+)
+
+func TestPanicVxExit(t *testing.T) {
+
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("recovered from ", err)
+		}
+	}()
+	fmt.Println("Start")
+	panic(errors.New("Something wrong!"))
+	//os.Exit(-1)
+	//fmt.Println("End")
+}
+
+```
+
+## 空接口和类型断言
+
+1.空接⼝口可以表示任何类型
+
+2.可以通过断言将空接口转换成特定的类型
 
 Go的类型断言是指在运行时动态地判断一个接口值所持有的值的类型是否为某个特定的类型。类型断言的语法形式如下：
 `x.(T)`
 其中，x 是一个接口值，T 是一个类型。如果 x 所持有的值的类型是 T，则类型断言返回 x 中的值和 true，否则返回零值和 false。
+
+例子：
+
+```go
+package empty_interface
+
+import (
+	"fmt"
+	"testing"
+)
+
+func DoSomething(p interface{}) {
+	// if i, ok := p.(int); ok {
+	// 	fmt.Println("Integer", i)
+	// 	return
+	// }
+	// if s, ok := p.(string); ok {
+	// 	fmt.Println("stirng", s)
+	// 	return
+	// }
+	// fmt.Println("Unknow Type")
+	switch v := p.(type) {
+	case int:
+		fmt.Println("Integer", v)
+	case string:
+		fmt.Println("String", v)
+	default:
+		fmt.Println("Unknow Type")
+	}
+}
+
+func TestEmptyInterfaceAssertion(t *testing.T) {
+	DoSomething(10)
+	DoSomething("10")
+}
+// result
+Integer 10
+String 10
+```
 
 ## 协程(goroutine)
 
@@ -1381,6 +1712,39 @@ func main() {
 
 这段代码创建了两个协程（goroutine），一个在主函数中通过go关键字调用f()函数创建，另一个是通过匿名函数创建。f()
 函数是一个简单的循环，打印出三个数值。匿名函数只打印一个字符串。由于协程运行在独立的线程中，因此它们可能不按照特定的顺序运行。 最后，使用time.Sleep()函数使主线程休眠一秒钟，以确保协程有足够的时间完成执行。
+
+## CSP
+
+CSP（Communicating Sequential Processes）是一种并发编程模型，最初由计算机科学家 Tony Hoare 在 1978 年提出。**CSP 强调通过在不同并发单元之间进行通信来协调并发活动，而不是共享数据。**
+
+在 CSP 中，程序被组织为一组独立运行的进程或协程，这些进程之间通过通道（Channel）进行通信。通道是并发单元之间传递消息的一种机制。通过在通道上发送和接收消息，协程之间可以进行同步的数据传递，而无需显式地共享内存。这种方式有助于避免传统并发编程中可能出现的竞态条件和死锁问题。
+
+在 Go 语言中，CSP 是一个核心概念。Goroutine 是 Go 语言中的轻量级线程，而通道则用于在这些 goroutine 之间传递数据。通过在通道上进行发送和接收操作，可以轻松实现协作并发。
+
+例如，在 Go 中，可以这样使用 CSP：
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    // 创建一个通道
+    messages := make(chan string)
+
+    // 启动一个 goroutine 发送消息到通道
+    go func() {
+        messages <- "Hello, CSP!"
+    }()
+
+    // 从通道接收消息
+    msg := <-messages
+    fmt.Println(msg)
+}
+```
+
+这个例子中，一个 goroutine 向通道发送消息，而主 goroutine 从通道接收消息，通过通道实现了协程之间的同步通信。
+
 
 ## 通道(Channels)
 
@@ -1425,6 +1789,64 @@ func main() {
     fmt.Println(<-messages)
 }
 ```
+
+例子：
+
+```go
+package concurrency
+
+import (
+	"fmt"
+	"testing"
+	"time"
+)
+
+func service() string {
+	time.Sleep(time.Millisecond * 50)
+	return "Done"
+}
+
+func otherTask() {
+	fmt.Println("working on something else")
+	time.Sleep(time.Millisecond * 100)
+	fmt.Println("Task is done.")
+}
+
+func TestService(t *testing.T) {
+	fmt.Println(service())
+	otherTask()
+}
+
+func AsyncService() chan string {
+	retCh := make(chan string, 1)
+	//retCh := make(chan string)
+	go func() {
+		ret := service()
+		fmt.Println("returned result.")
+		retCh <- ret
+		fmt.Println("service exited.")
+	}()
+	return retCh
+}
+
+//
+func TestAsynService(t *testing.T) {
+	retCh := AsyncService()
+	otherTask()
+	fmt.Println(<-retCh)
+	time.Sleep(time.Second * 1)
+}
+// 结果
+working on something else
+returned result.
+service exited.
+Task is done.
+Done
+```
+
+
+
+
 
 在使用通道时，通常需要将它们与goroutine一起使用，以便可以在不同的goroutine之间发送和接收数据。可以在goroutine内部使用select语句，从多个通道接收数据。
 
@@ -1520,6 +1942,7 @@ func main() {
 ### 关闭通道
 
 ```go
+
 package main
 
 import "fmt"
@@ -1545,6 +1968,7 @@ func main() {
         jobs <- j
         fmt.Println("sent job", j)
     }
+//表示不再有新的数据发送到通道中
     close(jobs)
     fmt.Println("sent all jobs")
 
@@ -1552,7 +1976,252 @@ func main() {
 }
 ```
 
-通道关闭后，再执行拿取操作，将会立即得到一个零值，并返回一个对应的可选的布尔值 false 表示通道已关闭。
+在 Go 语言中，关闭一个通道是为了告诉接收方不会再有新的数据发送到通道中。关闭通道后，接收方仍然可以从通道中读取已经发送的数据，直到通道中的所有数据都被接收完毕。
+
+* 向关闭的channel 发送数据，会导致panic
+* v，ok ＜-ch； ok为 bool值，true 表示正常接受，false 表示通道关闭
+* 所有的channel 接收者都会在channel 关闭时，立刻从阻塞等待中返回且上述ok值为false。这个广播机制常被利用，进行向多个订阅者同时发送信号。如：退出信号。
+
+## 取消任务(使用关闭通道)
+
+因为这个通道的所有的接收者，在channel关闭的时候，都会得到一个0值，所以可以使用这个方法将所有任务都取消掉。
+
+```go
+package concurrency
+
+import (
+	"fmt"
+	"testing"
+	"time"
+)
+
+func isCancelled(cancelChan chan struct{}) bool {
+	select {
+	case <-cancelChan:
+		return true
+	default:
+		return false
+	}
+}
+//单次取消
+func cancel_1(cancelChan chan struct{}) {
+	cancelChan <- struct{}{}
+}
+// 全部取消
+func cancel_2(cancelChan chan struct{}) {
+	close(cancelChan)
+}
+
+func TestCancel(t *testing.T) {
+	cancelChan := make(chan struct{}, 0)
+	for i := 0; i < 5; i++ {
+		go func(i int, cancelCh chan struct{}) {
+			for {
+				if isCancelled(cancelCh) {
+					break
+				}
+				time.Sleep(time.Millisecond * 5)
+			}
+			fmt.Println(i, "Cancelled")
+		}(i, cancelChan)
+	}
+	cancel_2(cancelChan)
+	time.Sleep(time.Second * 1)
+}
+
+```
+
+## 关联任务的取消(Context)
+
+```go
+package cancel
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+)
+
+func isCancelled(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
+
+func TestCancel(t *testing.T) {
+	//创建了一个带有取消机制的 context，并返回了一个取消函数 cancel。
+	//这个 context 的初始状态是未取消的。
+	ctx, cancel := context.WithCancel(context.Background())
+	for i := 0; i < 5; i++ {
+		go func(i int, ctx context.Context) {
+			for {
+				if isCancelled(ctx) {
+					break
+				}
+				time.Sleep(time.Millisecond * 5)
+			}
+			fmt.Println(i, "Cancelled")
+		}(i, ctx)
+	}
+	// 在主函数中调用 cancel() 函数，取消了 context。
+	//这会导致所有的子 goroutine 检测到 ctx.Done() 通道关闭，从而退出循环。
+	cancel()
+	time.Sleep(time.Second * 1)
+}
+
+
+```
+
+### Context
+
+
+`context` 包是 Go 语言中用于处理请求范围数据、取消信号和截止时间的标准库。它提供了一种在跨 API 边界和进程边界传递请求范围数据的方式，同时支持取消信号和截止时间的传播。以下是 `context` 包的主要组件和概念：
+
+1. **Context 接口：**
+
+   - `Context` 是一个接口类型，定义了用于处理请求范围数据的方法。
+   - 标准库提供了两个基础的 `Context` 实现，分别是 `context.Background()` 和 `context.TODO()`。
+2. **`context.Background()`：**
+
+   - `context.Background()` 返回一个空的、非取消的 `Context`。它通常用作根 `Context`。
+3. **`context.TODO()`：**
+
+   - `context.TODO()` 和 `context.Background()` 类似，但它表明代码中应该没有处理 `Context` 的具体逻辑。它通常在还没有明确的 `Context` 时使用。
+4. **`context.WithCancel`：**
+
+   - `context.WithCancel` 返回一个带有取消函数的新的 `Context`。调用取消函数会关闭该 `Context`，通知所有与之关联的 goroutine 取消操作。
+5. **`context.WithTimeout` 和 `context.WithDeadline`：**
+
+   - `context.WithTimeout` 返回一个在超时时间到达时自动取消的 `Context`。
+   - `context.WithDeadline` 返回一个在指定截止时间到达时自动取消的 `Context`。
+6. **`context.Value`：**
+
+   - `context.Value` 方法用于获取请求范围的数据。这个方法在多个 API 调用之间传递请求特定的值。
+
+使用 `context` 的主要场景包括：
+
+- 在 HTTP 请求处理中传递取消信号和截止时间。
+- 在多个 goroutine 之间传递请求范围的数据。
+
+示例：
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+func main() {
+	// 创建一个带有取消函数的 Context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // 通常通过 defer 来调用取消函数
+
+	// 启动一个 goroutine，在取消信号到达时退出
+	go func() {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Goroutine: Context canceled")
+		}
+	}()
+
+	// 模拟一些工作
+	time.Sleep(2 * time.Second)
+
+	// 发送取消信号
+	cancel()
+	time.Sleep(1 * time.Second) // 为了确保 Goroutine 有足够的时间响应
+}
+```
+
+在这个示例中，`context.WithCancel` 用于创建一个带有取消函数的 `Context`，并在稍后调用 `cancel()` 时发送取消信号。 Goroutine 通过监听 `ctx.Done()` 通道，在取消信号到达时退出。
+
+
+
+
+
+
+
+## 互斥锁
+
+`sync.Mutex` 是 Go 语言标准库中提供的一个用于实现互斥锁（Mutex）的类型。Mutex 是互斥器的简称，用于保护共享资源，确保在同一时间只有一个 goroutine 可以访问这些资源，从而避免竞态条件（Race Condition）。
+
+在 Go 中，可以使用 `sync.Mutex` 来创建一个互斥锁。这个锁有两个主要的方法：
+
+1. `Lock()`: 用于获取锁。如果锁已经被其他 goroutine 获取了，那么调用 `Lock` 的 goroutine 将被阻塞，直到锁被释放。
+2. `Unlock()`: 用于释放锁。通常在临界区的最后调用，确保其他 goroutine 可以获取到锁。
+
+以下是一个简单的示例，演示了如何使用 `sync.Mutex`：
+
+```go
+package share_mem
+
+import (
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestCounterThreadSafe(t *testing.T) {
+	var mut sync.Mutex
+	counter := 0
+	for i := 0; i < 5000; i++ {
+		go func() {
+			defer func() {
+				mut.Unlock()
+			}()
+			mut.Lock()
+			counter++
+		}()
+	}
+	time.Sleep(1 * time.Second)
+	t.Logf("counter = %d", counter)
+
+}
+```
+
+## waitgroup
+
+需要等待多个协程完成，可以使用wait group
+
+```go
+package share_mem
+
+import (
+	"sync"
+	"testing"
+	"time"
+)
+func TestCounterWaitGroup(t *testing.T) {
+	var mut sync.Mutex
+	var wg sync.WaitGroup
+	counter := 0
+	for i := 0; i < 5000; i++ {
+//每启动一个 goroutine，就将 WaitGroup 中的计数加一，表示有一个 goroutine 需要等待
+		wg.Add(1)
+		go func() {
+			defer func() {
+				mut.Unlock()
+			}()
+			mut.Lock()
+			counter++
+//wg.Done() 减少 WaitGroup 中的计数，表示一个 goroutine 已完成。
+			wg.Done()
+		}()
+	}
+//wg.Wait(): 主函数等待 WaitGroup 中的计数变为零，即等待所有的 goroutine 完成。
+	wg.Wait()
+	t.Logf("counter = %d", counter)
+
+}
+```
+
 
 ## Timer 定时器
 
@@ -1847,3 +2516,62 @@ func main() {
 	}
 }
 ```
+
+## Package
+
+### GOPATH
+
+为不同项目指定GOPATH 在引入包的时候，会方便一点
+
+这个GOPATH=`$HOME/go`,项目的路径是:`/Users/wangxing/go/src/go_learning/code`![image.png](./assets/1698913568044-image.png)
+
+### init 方法
+
+![image.png](./assets/1698913837413-image.png)
+
+
+### 管理依赖
+
+Go 使用 Go Modules 来管理包的版本。Go Modules 是 Go 1.11 版本引入的一项功能，它提供了一种更现代和灵活的方式来管理包的依赖关系和版本。
+
+下面是一些关于 Go Modules 的基本操作：
+
+1. **初始化模块：** 在项目的根目录执行以下命令，初始化 Go Modules：
+
+   ```bash
+   go mod init <module-name>
+   ```
+
+   `<module-name>` 是你的项目的模块路径。
+2. **添加依赖：** 在项目中引入新的依赖，Go 会自动更新 `go.mod` 文件。例如：
+
+   ```bash
+   go get <package-name>@<version>
+   ```
+
+   或者
+
+   ```bash
+   go get <package-name>@latest
+   ```
+
+   `@latest` 表示获取最新版本。
+3. **查看依赖：** 使用以下命令查看当前模块的所有依赖项：
+
+   ```bash
+   go list -m all
+   ```
+4. **升级依赖：** 如果需要升级依赖到最新版本，可以执行：
+
+   ```bash
+   go get -u <package-name>
+   ```
+
+   这会将依赖更新到最新版本。
+5. **移除依赖：** 使用以下命令移除不再需要的依赖：
+
+   ```bash
+   go get <package-name>@none
+   ```
+
+这些命令和操作使得 Go Modules 管理包的版本变得更加容易和灵活。 `go.mod` 文件会记录你的项目所使用的所有依赖以及它们的版本信息。
