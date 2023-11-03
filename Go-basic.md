@@ -2772,7 +2772,6 @@ func (p *ObjPool) ReleaseObj(obj *ReusableObj) error {
 
 ```
 
-
 这段代码实现了一个简单的对象池（Object Pool）模式，以下是每个部分的解释：
 
 1. `ReusableObj` 结构体：表示可重用的对象。在这个例子中，`ReusableObj` 只是一个空结构体，实际中可能包含更多属性和方法。
@@ -2782,7 +2781,6 @@ func (p *ObjPool) ReleaseObj(obj *ReusableObj) error {
 5. `ReleaseObj` 方法：用于释放对象，将对象放回对象池。通过 `select` 语句，它会尝试将对象放回通道，如果通道已满则返回错误。
 
 这个对象池的设计允许在需要时从池中获取对象，并在使用完毕后将对象放回池中，以便其他地方继续使用。同时，通过超时机制，可以避免长时间等待。这是一种在并发环境下管理资源的常见模式。
-
 
 ### sync.pool
 
@@ -2849,3 +2847,334 @@ func TestSyncPoolInMultiGroutine(t *testing.T) {
 }
 
 ```
+
+## 单元测试
+
+Go 语言中的单元测试通常使用标准库中的 `testing` 包。以下是关于 Go 单元测试的一些基本信息：
+
+1. **测试函数的命名规范**：测试函数的命名应该以 `Test` 开头，例如 `TestMyFunction`。
+2. **测试文件的命名规范**：测试文件的命名应该以 `_test.go` 结尾，例如 `my_function_test.go`。
+3. **测试函数的签名**：测试函数的签名应为 `func TestXxx(t *testing.T)`，其中 `Xxx` 是被测试函数的名称，`t *testing.T` 是测试的上下文。
+4. **测试框架**：Go 使用内置的 `testing` 包来提供测试框架。测试函数的主要工作是使用 `t *testing.T` 上下文对象来报告测试是否通过。
+5. **测试命令**：使用 `go test` 命令运行测试。Go 会自动查找并运行所有符合测试命名规范的函数。
+6. **断言**：`testing` 包提供了 `t.Errorf` 和 `t.Fatalf` 来报告测试失败，通常与 `if` 语句结合使用。
+
+### 示例
+
+以下是一个简单的示例：
+
+```go
+// my_function.go
+
+package mypackage
+
+func Add(a, b int) int {
+    return a + b
+}
+```
+
+```go
+// my_function_test.go
+
+package mypackage
+
+import "testing"
+
+func TestAdd(t *testing.T) {
+    result := Add(2, 3)
+    expected := 5
+
+    if result != expected {
+        t.Errorf("Add(2, 3) returned %d, expected %d", result, expected)
+    }
+}
+```
+
+在终端中运行测试：
+
+```bash
+go test
+```
+
+这将运行所有测试文件。你还可以通过指定文件或目录来运行特定的测试。例如：
+
+```bash
+go test mypackage
+```
+
+这将运行 `mypackage` 目录下的所有测试文件。
+
+例子2：
+
+内置测试框架的参数区别
+
+* Fail，Error：该测试失败，该测试继续，其他测试继续执行
+* FailNow，Fatal：该测试失败，该测试中止，其他测试继续执行
+
+主文件和测试文件可以放在一个目录下，package 需要一致
+
+![image.png](./assets/1698994291272-image.png)
+
+```go
+// function.go
+package testing
+
+func square(op int) int {
+	return op * op
+}
+
+```
+
+```go
+//function_test.go
+package testing
+
+import (
+	"fmt"
+	"testing"
+//一个断言的包
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSquare(t *testing.T) {
+	inputs := [...]int{1, 2, 3}
+	expected := [...]int{1, 4, 9}
+	for i := 0; i < len(inputs); i++ {
+		ret := square(inputs[i])
+		if ret != expected[i] {
+			t.Errorf("input is %d, the expected is %d, the actual %d",
+				inputs[i], expected[i], ret)
+		}
+	}
+}
+
+func TestErrorInCode(t *testing.T) {
+	fmt.Println("Start")
+	t.Error("Error")
+	fmt.Println("End")
+}
+
+func TestFailInCode(t *testing.T) {
+	fmt.Println("Start")
+	t.Fatal("Error")
+	fmt.Println("End")
+}
+
+func TestSquareWithAssert(t *testing.T) {
+	inputs := [...]int{1, 2, 3}
+	expected := [...]int{1, 4, 9}
+	for i := 0; i < len(inputs); i++ {
+		ret := square(inputs[i])
+		assert.Equal(t, expected[i], ret)
+	}
+}
+
+```
+
+### Error and Fatal
+
+Error：测试失败，继续下一步：
+
+![image.png](./assets/1698994895046-image.png)
+
+Fatal：测试失败，本测试终止：
+
+![image.png](./assets/1698995077010-image.png)
+
+### go test
+
+这个 `go test -v -cover` 命令用于在运行测试时提供更详细的输出，并生成测试覆盖率报告。
+
+- `-v` 选项表示 "verbose"（冗长），它会输出更详细的信息，包括每个测试函数的运行情况。
+- `-cover` 选项用于显示测试覆盖率的统计信息。它会告诉你代码中哪些部分被测试覆盖，以及覆盖的程度。
+
+在终端中运行 `go test -v -cover` 会得到类似下面的输出：
+
+```bash
+=== RUN   TestMyFunction
+--- PASS: TestMyFunction (0.00s)
+PASS
+coverage: 85.7% of statements
+```
+
+这表示你的测试通过了，并且代码的 85.7% 被测试覆盖。
+
+这对于确保你的测试足够全面地覆盖了代码是很有帮助的。
+
+常用：
+
+1. **运行测试：**
+
+   ```bash
+   go test
+   ```
+
+   这将在当前目录及其子目录中查找并运行所有的测试。
+2. **指定测试包：**
+
+   ```bash
+   go test package/path
+   ```
+
+   可以指定特定的包或目录来运行测试。
+3. **显示详细信息：**
+
+   ```bash
+   go test -v
+   ```
+
+   使用 `-v` 标志以获取详细的测试输出。
+4. **运行特定测试函数：**
+
+   ```bash
+   go test -run TestFunctionName
+   ```
+
+   使用 `-run` 标志来运行匹配测试函数名称的测试。
+5. **测试覆盖率报告：**
+
+   ```bash
+   go test -cover
+   ```
+
+   使用 `-cover` 标志以获取测试覆盖率报告。
+6. **显示详细覆盖率信息：**
+
+   ```bash
+   go test -coverprofile=coverage.out
+   go tool cover -html=coverage.out
+   ```
+
+   使用 `-coverprofile` 标志生成详细的覆盖率信息，并使用 `go tool cover` 打开 HTML 报告。
+7. **运行基准测试：**
+
+   ```bash
+   go test -bench .
+   ```
+
+   使用 `-bench` 标志运行基准测试。
+8. **运行性能测试：**
+
+   ```bash
+   go test -run=XXX -bench=.
+   ```
+
+   使用 `-run=XXX` 标志运行性能测试。
+
+这些只是 `go test` 命令的一些常用选项。你可以通过运行 `go help test` 来获取更多详细信息。
+
+### stretchr/testify
+
+`stretchr/testify` 是一个用于 Go 语言的测试断言库，它提供了一些额外的断言函数和工具，用于更方便地编写测试。
+
+有关 `stretchr/testify` 的一些主要特点：
+
+1. **断言函数：** 提供了更丰富、更直观的断言函数，使测试更易于编写和阅读。
+2. **Suite 支持：** 允许你创建测试套件，将相关的测试组织在一起，并共享设置。
+3. **Mock：** 提供了一些简单的 mocking 工具，用于模拟函数和方法的行为。
+4. **HTTP 断言：** 用于 HTTP 测试的特殊断言，使得测试 HTTP 请求和响应变得更加容易。
+5. **丰富的错误消息：** 当测试失败时，提供详细的错误消息，以便更容易诊断问题。
+6. **断言失败时不停止测试：** 即使一个断言失败，测试也会继续运行，这有助于查找代码中的多个问题。
+
+在使用 `stretchr/testify` 之前，你需要使用 `go get` 命令安装它：
+
+```bash
+go get github.com/stretchr/testify
+```
+
+然后，在你的测试文件中导入它：
+
+```go
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+```
+
+现在你可以使用 `assert` 包中的函数来编写更清晰、更强大的测试断言。
+
+### Benchmark
+
+在 Go 语言中，性能测试使用基准测试（Benchmark）来衡量代码的性能。基准测试函数必须以 `Benchmark` 开头，并且接收一个 `*testing.B` 参数。以下是一个基准测试的示例：
+
+```go
+package mypackage
+
+import (
+	"testing"
+)
+
+func BenchmarkMyFunction(b *testing.B) {
+//与性能测试无关的代码
+b.ResetTimer()
+	// 这里写需要测试性能的代码
+	for i := 0; i < b.N; i++ {
+		// 这里是被测试的代码
+		MyFunction()
+	}
+b.StopTimer()
+//与性能测试无关的代码
+}
+```
+
+在这个例子中，`BenchmarkMyFunction` 是一个基准测试函数，它使用 `*testing.B` 参数。基准测试函数运行时，`b.N` 表示测试循环的次数，测试框架会自动调整 `b.N`，以便测量时间较长的运行。
+
+运行基准测试的命令如下：
+
+```bash
+go test -bench .
+```
+
+这将运行所有的基准测试。你也可以只运行特定的基准测试，例如：
+
+```bash
+go test -bench=MyFunction
+```
+
+在基准测试运行后，Go 会输出每次操作的平均耗时以及每秒可以执行多少次操作等信息。
+
+例子：
+
+字符串连接：对比`+` 和 `bytes.Buffer`
+
+```go
+package benchmark_test
+
+import (
+	"bytes"
+	"testing"
+)
+
+func BenchmarkConcatStringByAdd(b *testing.B) {
+
+	elems := []string{"1", "2", "3", "4", "5"}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ret := ""
+		for _, elem := range elems {
+			ret += elem
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkConcatStringByBytesBuffer(b *testing.B) {
+	elems := []string{"1", "2", "3", "4", "5"}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var buf bytes.Buffer
+
+		for _, elem := range elems {
+			buf.WriteString(elem)
+
+		}
+	}
+	b.StopTimer()
+
+}
+
+```
+
+可以调用`go test -bench .`进行性能测试，
+
+`go test -bench=. -benchmen`
