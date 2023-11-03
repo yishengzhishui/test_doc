@@ -3575,4 +3575,199 @@ func main() {
    }
    ```
 
-总的来说，`reflect.Type` 主要用于获取类型的信息，而 `reflect.Value` 主要用于获取值的信息。在访问结构体字段时，两者都提供了 `FieldByName` 方法，但返回的结果类型不同。
+总的来说，`reflect.Type` 主要用于获取类型的信息，而 `reflect.Value` 主要用于获取值的信息。在访问结构体字段时，两w者都提供了 `FieldByName` 方法，但返回的结果类型不同。
+
+### "万能"程序
+
+例子代码：
+
+```go
+package flexible_reflect
+
+import (
+	"errors"
+	"reflect"
+	"testing"
+)
+
+type Employee struct {
+	EmployeeID string
+	Name       string `format:"normal"`
+	Age        int
+}
+
+func (e *Employee) UpdateAge(newVal int) {
+	e.Age = newVal
+}
+
+type Customer struct {
+	CookieID string
+	Name     string
+	Age      int
+}
+
+//根据传入的 settings map 对结构体指针 st 进行赋值
+func fillBySettings(st interface{}, settings map[string]interface{}) error {
+
+	if reflect.TypeOf(st).Kind() != reflect.Ptr {
+		return errors.New("the first param should be a pointer to the struct type.")
+	}
+	// Elem() 获取指针指向的值
+	if reflect.TypeOf(st).Elem().Kind() != reflect.Struct {
+		return errors.New("the first param should be a pointer to the struct type.")
+	}
+
+	if settings == nil {
+		return errors.New("settings is nil.")
+	}
+
+	var (
+		field reflect.StructField
+		ok    bool
+	)
+
+	for k, v := range settings {
+//结构体类型的FieldByName 是有两个返回值的
+		if field, ok = (reflect.ValueOf(st)).Elem().Type().FieldByName(k); !ok {
+			continue
+		}
+		if field.Type == reflect.TypeOf(v) {
+			vstr := reflect.ValueOf(st)
+			vstr = vstr.Elem()
+			vstr.FieldByName(k).Set(reflect.ValueOf(v))
+		}
+
+	}
+	return nil
+}
+
+func TestFillNameAndAge(t *testing.T) {
+	settings := map[string]interface{}{"Name": "Mike", "Age": 30}
+	e := Employee{}
+	if err := fillBySettings(&e, settings); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(e)
+	c := new(Customer)
+	if err := fillBySettings(c, settings); err != nil {
+		t.Fatal(err)
+	}
+	t.Log(*c)
+}
+
+```
+
+代码解释：
+
+1. `reflect.TypeOf(st).Kind() != reflect.Ptr`：这里首先判断 `st` 是否是一个指针，因为该函数预期的第一个参数应该是一个指向结构体的指针。
+2. `reflect.TypeOf(st).Elem().Kind() != reflect.Struct`：然后检查这个指针指向的值是否是一个结构体。`Elem()` 方法用于获取指针指向的值。
+3. `if settings == nil`：检查传入的 `settings` 是否为 `nil`。
+4. 在 `for k, v := range settings` 循环中，函数遍历 `settings` 中的键值对。
+5. `if field, ok = (reflect.ValueOf(st)).Elem().Type().FieldByName(k); !ok`：通过 `FieldByName` 获取结构体字段的元数据，`ok` 表示是否找到了这个字段。
+6. `if field.Type == reflect.TypeOf(v)`：检查 `settings` 中的值的类型是否与结构体字段的类型匹配。
+7. `vstr := reflect.ValueOf(st)`：获取结构体指针的 `reflect.Value`。
+8. `vstr = vstr.Elem()`：通过 `Elem` 获取结构体指针指向的值的 `reflect.Value`。
+9. `vstr.FieldByName(k).Set(reflect.ValueOf(v))`：使用 `FieldByName(k)` 获取结构体字段的 `reflect.Value`，然后使用 `Set` 方法将 `v` 的值赋给结构体字段。
+
+
+### 不安全编程 unsafe
+
+`unsafe` 包提供了一些操作底层内存的函数，这些操作是不安全的，因为它们绕过了 Go 语言的内存安全检查。在使用 `unsafe` 包时，需要格外小心，确保不会破坏语言的安全性和可移植性。
+
+以下是 `unsafe` 包中一些常见的函数和类型：
+
+1. `unsafe.Pointer`：`Pointer` 是一个通用的指针类型，可以包含任何类型的地址。通过 `unsafe.Pointer` 可以将一个具体类型的指针转换为通用指针，也可以将通用指针转换为具体类型的指针。
+2. `unsafe.Sizeof`：返回给定表达式的大小（以字节为单位），但是并不会计算它指向的数据的深层结构大小。
+3. `unsafe.Alignof`：返回给定表达式的对齐方式（以字节为单位），即数据在内存中的起始位置相对于其地址的对齐方式。
+4. `unsafe.Offsetof`：返回给定结构体字段相对于结构体起始位置的偏移量（以字节为单位）。
+5. `unsafe.ArbitraryType`：`ArbitraryType` 是一个占位符类型，用于在编写一些与具体类型无关的代码时，表示不关心具体类型。
+
+使用 `unsafe` 包需要极大的谨慎，因为它允许绕过 Go 语言的类型安全和内存安全机制。在正常的应用程序中，应该尽量避免使用 `unsafe` 包。只有在需要与 C 语言进行交互、处理底层数据结构或进行其他一些特殊情况时，才应该考虑使用 `unsafe` 包。
+
+
+#### 并发读写共享数据
+
+```go
+package unsafe_test
+
+import (
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+	"unsafe"
+)
+
+//原子类型操作
+func TestAtomic(t *testing.T) {
+// unsafe.Pointer 是一种特殊的指针类型，可以容纳任何其他指针类型
+	var shareBufPtr unsafe.Pointer
+//writeDataFn 函数用于写入数据到共享的切片中，而 readDataFn 函数用于读取共享的切片，并打印出来。
+	writeDataFn := func() {
+		data := []int{}
+		for i := 0; i < 100; i++ {
+			data = append(data, i)
+		}
+//将切片的地址以原子方式存储到 shareBufPtr 中
+		atomic.StorePointer(&shareBufPtr, unsafe.Pointer(&data))
+	}
+	readDataFn := func() {
+//以原子方式加载 shareBufPtr 中的数据的地址
+		data := atomic.LoadPointer(&shareBufPtr)
+		fmt.Println(data, *(*[]int)(data))
+	}
+	var wg sync.WaitGroup
+// 先调用一次 writeDataFn 初始化共享数据，
+//然后启动多个 goroutine 进行并发读写。每个 goroutine 中，都会执行 10 次写入和读取操作，并且每次操作之后都会休眠 100 微秒。
+	writeDataFn()
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < 10; i++ {
+				writeDataFn()
+				time.Sleep(time.Microsecond * 100)
+			}
+			wg.Done()
+		}()
+		wg.Add(1)
+		go func() {
+			for i := 0; i < 10; i++ {
+				readDataFn()
+				time.Sleep(time.Microsecond * 100)
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+```
+
+
+#### `atomic.StorePointer`
+
+`atomic.StorePointer`是 Go 语言 `sync/atomic` 包中的一个函数，用于进行原子的指针存储操作。其函数签名为：
+
+```go
+func StorePointer(addr *unsafe.Pointer, new unsafe.Pointer)
+```
+
+这个函数用于将 `new` 存储到 `addr` 指向的地址，并且这个存储操作是原子的，即保证在多个 goroutine 之间的同步。
+
+注意，在使用 `atomic.StorePointer` 时，`new` 和 `addr` 的类型必须是 `unsafe.Pointer`，这是为了强调这是一个不安全的操作，需要特殊的注意。
+
+#### `atomic.StorePointer`
+
+`atomic.StorePointer` 是 Go 语言 `sync/atomic` 包中的一个原子操作函数，用于原子性地将一个指针存储到指定的内存地址。
+
+这个函数的签名为：
+
+```go
+func StorePointer(addr *unsafe.Pointer, new unsafe.Pointer)
+```
+
+- `addr`: 要存储值的内存地址的指针。
+- `new`: 要存储的新值，必须是 `unsafe.Pointer` 类型。
+
+这个函数的作用是将 `new` 存储到 `addr` 指向的内存地址，是一个原子操作，保证在多个 goroutine 中的并发访问时不会发生竞争条件。
