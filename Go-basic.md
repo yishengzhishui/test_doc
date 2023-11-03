@@ -3372,3 +3372,207 @@ func BenchmarkConcatStringByBytesBuffer(b *testing.B) {
    ```
 
 总之，`reflect.Value` 提供了对值的类型和底层类型的访问。通过这些信息，你可以在运行时动态地处理不同类型的值。
+
+### reflect.equal()
+
+`reflect.DeepEqual` 是 Go 语言中 `reflect` 包提供的一个函数，用于深度比较两个值是否相等。具体来说，它会递归地比较两个值的每个字段是否相等，包括嵌套结构体、切片、映射等。这个函数的签名如下：
+
+```go
+func DeepEqual(x, y interface{}) bool
+```
+
+其中 `x` 和 `y` 是待比较的两个值。
+
+使用示例：
+
+```go
+package main
+
+import (
+	"fmt"
+	"reflect"
+)
+
+type Person struct {
+	Name string
+	Age  int
+}
+
+func main() {
+	// 创建两个相同结构的对象
+	person1 := Person{Name: "John", Age: 30}
+	person2 := Person{Name: "John", Age: 30}
+
+	// 使用 DeepEqual 比较两个对象是否相等
+	equal := reflect.DeepEqual(person1, person2)
+
+	fmt.Println("Are the objects equal?", equal)
+}
+```
+
+在上面的例子中，`DeepEqual` 会递归地比较 `person1` 和 `person2` 的 `Name` 和 `Age` 字段，判断它们是否相等。如果两个对象在深度上是相等的，那么 `DeepEqual` 返回 `true`。
+
+需要注意的是，`DeepEqual` 的使用场景通常是在测试中，用于比较两个结构体实例是否相等。在一般的业务逻辑中，直接使用 `==` 运算符可能更为直观和高效。
+
+
+
+### 利用反射编写灵活的代码
+
+```go
+package reflect_test
+
+import (
+	"fmt"
+	"reflect"
+	"testing"
+)
+
+type Employee struct {
+	EmployeeID string
+	Name       string `format:"normal"`
+	Age        int
+}
+
+func (e *Employee) UpdateAge(newVal int) {
+	e.Age = newVal
+}
+
+type Customer struct {
+	CookieID string
+	Name     string
+	Age      int
+}
+
+func TestInvokeByName(t *testing.T) {
+	e := &Employee{"1", "Mike", 30}
+	//按名字获取成员
+//%[1]v 和 %[1]T 是格式化字符串中的占位符，它们分别表示在参数列表中使用的第一个参数的值和类型。
+	t.Logf("Name: value(%[1]v), Type(%[1]T) ", reflect.ValueOf(*e).FieldByName("Name"))
+	if nameField, ok := reflect.TypeOf(*e).FieldByName("Name"); !ok {
+		t.Error("Failed to get 'Name' field.")
+	} else {
+		t.Log("Tag:format", nameField.Tag.Get("format"))
+	}
+	reflect.ValueOf(e).MethodByName("UpdateAge").
+		Call([]reflect.Value{reflect.ValueOf(1)})
+	t.Log("Updated Age:", e)
+}
+```
+
+相关解释：
+
+Employee 结构体 字段name有一个 struct tag。
+
+在 Go 语言中，结构体字段的 struct tag 是在字段声明时附加的元信息，用于提供关于该字段的额外信息。Struct tag 以反引号 `` 包裹，可以包含各种键值对。例如：
+
+```go
+type Employee struct {
+    Name string `json:"name" format:"normal"`
+    Age  int    `json:"age"`
+}
+```
+
+在上面的例子中，`Name` 字段有两个 struct tag：`json:"name"` 和 `format:"normal"`。这些 struct tag 在运行时可以通过反射来获取，用于实现一些元编程的功能。
+
+在常见的应用中，struct tag 常用于以下场景：
+
+1. **序列化和反序列化**：在 JSON 或其他格式的序列化中，struct tag 可以指定字段在序列化时的名称。
+2. **ORM（对象关系映射）**：在数据库映射中，struct tag 可以包含数据库字段的信息，如字段名、索引、约束等。
+3. **表单处理**：在 web 开发中，struct tag 可以用于处理表单数据的绑定，指定表单字段的名称和验证规则。
+
+在 Go 的反射中，可以通过 `reflect.StructField` 类型的 `Tag` 字段来获取 struct tag。例如：
+
+```go
+field, ok := reflect.TypeOf(Employee{}).FieldByName("Name")
+if ok {
+    fmt.Println("Name field tag:", field.Tag)
+    fmt.Println("Value of 'format' tag:", field.Tag.Get("format"))
+}
+```
+
+在这个例子中，我们获取了 `Employee` 结构体的 `Name` 字段，然后通过 `Tag` 字段获取了 struct tag 的内容。
+
+### reflect.ValueOf 返回值的区别
+
+```go
+e := &Employee{"1", "Mike", 30}
+```
+
+从上面代码可以知道，reflect.ValueOf(*e)返回的是一个实际的结构体值 和reflect.ValueOf(e)返回的是一个指向这个结构体的指针。
+
+![image.png](./assets/1699006543301-image.png)
+
+`reflect.ValueOf(e)` 返回的是指针类型的 `reflect.Value`，而不是实际的结构体值。如果你尝试在指针上调用 `FieldByName` 方法，会导致 panic。
+
+**要在指针类型上使用 `FieldByName` 方法，你需要先通过 `Elem` 方法获取指针指向的实际值**，然后再调用 `FieldByName`。下面是一个例子：
+
+```go
+package main
+
+import (
+	"fmt"
+	"reflect"
+)
+
+type Employee struct {
+	Name string
+	Age  int
+}
+
+func main() {
+	e := &Employee{Name: "John", Age: 30}
+
+	// 通过 reflect.ValueOf(e) 获取 reflect.Value
+	valueOfPointer := reflect.ValueOf(e)
+
+	// 使用 Elem 方法获取指针指向的值
+	valueOfStruct := valueOfPointer.Elem()
+
+	// 然后可以安全地调用 FieldByName
+	nameField := valueOfStruct.FieldByName("Name")
+	fmt.Println("Name:", nameField.Interface()) // 输出: John
+}
+```
+
+在这个例子中，`valueOfPointer.Elem()` 返回了指针 `e` 指向的实际结构体的值，然后你可以在这个结构体值上调用 `FieldByName`。
+
+
+### Call方法
+
+在 `Call([]reflect.Value{reflect.ValueOf(1)})` 中，`Call` 方法的参数是一个 `reflect.Value` 的切片。在这个特定的例子中，我们使用 `reflect.ValueOf(1)` 创建了一个 `reflect.Value` 对象，然后将其放入一个切片中，最终将这个切片传递给 `Call` 方法。
+
+具体来说，`reflect.ValueOf(1)` 将整数 `1` 转换为 `reflect.Value` 类型的对象，然后放入了一个切片中。`Call` 方法期望的参数是一个 `reflect.Value` 类型的**切片**，因此我们将这个切片传递给了 `Call` 方法。
+
+在这个上下文中，`1` 是传递给 "UpdateAge" 方法的参数。实际上，"UpdateAge" 方法应该是有一个参数的。
+
+### reflect.TypeOf(*e).FieldByName 和 reflect.ValueOf(*e).FieldByName
+
+
+在 Go 的反射中，`reflect.Type` 和 `reflect.Value` 是两个不同的类型，分别用于描述类型信息和值信息。
+
+1. **`reflect.Type`：** 这个类型表示一个 Go 类型的元数据。对于结构体类型，你可以使用 `FieldByName` 方法来获取结构体的字段信息。它返回一个 `reflect.StructField`，其中包含了字段的详细信息，比如字段的名称、类型等。
+
+   ```go
+   type MyStruct struct {
+       Name string
+       Age  int
+   }
+
+   t := reflect.TypeOf(MyStruct{})
+   field, ok := t.FieldByName("Name")
+   if ok {
+       fmt.Println("Field found:", field)
+   }
+   ```
+2. **`reflect.Value`：** 这个类型表示一个值的元数据。对于结构体实例，你可以使用 `FieldByName` 方法来获取结构体字段的值。它返回一个 `reflect.Value`，你可以通过 `Interface` 方法将其转换为实际的值。
+
+   ```go
+   instance := MyStruct{Name: "John", Age: 30}
+   v := reflect.ValueOf(instance)
+   fieldValue := v.FieldByName("Name")
+   if fieldValue.IsValid() {
+       fmt.Println("Field value:", fieldValue.Interface())
+   }
+   ```
+
+总的来说，`reflect.Type` 主要用于获取类型的信息，而 `reflect.Value` 主要用于获取值的信息。在访问结构体字段时，两者都提供了 `FieldByName` 方法，但返回的结果类型不同。
