@@ -1628,7 +1628,7 @@ func TestPanicVxExit(t *testing.T) {
 
 ## 空接口和类型断言
 
-1.空接⼝口可以表示任何类型
+1.空接⼝可以表示任何类型
 
 2.可以通过断言将空接口转换成特定的类型
 
@@ -1745,7 +1745,6 @@ func main() {
 
 这个例子中，一个 goroutine 向通道发送消息，而主 goroutine 从通道接收消息，通过通道实现了协程之间的同步通信。
 
-
 ## 通道(Channels)
 
 通道(channels) 是连接多个协程的管道。 你可以从一个协程将值发送到通道，然后在另一个协程中接收。
@@ -1843,10 +1842,6 @@ service exited.
 Task is done.
 Done
 ```
-
-
-
-
 
 在使用通道时，通常需要将它们与goroutine一起使用，以便可以在不同的goroutine之间发送和接收数据。可以在goroutine内部使用select语句，从多个通道接收数据。
 
@@ -2078,7 +2073,6 @@ func TestCancel(t *testing.T) {
 
 ### Context
 
-
 `context` 包是 Go 语言中用于处理请求范围数据、取消信号和截止时间的标准库。它提供了一种在跨 API 边界和进程边界传递请求范围数据的方式，同时支持取消信号和截止时间的传播。以下是 `context` 包的主要组件和概念：
 
 1. **Context 接口：**
@@ -2141,12 +2135,6 @@ func main() {
 ```
 
 在这个示例中，`context.WithCancel` 用于创建一个带有取消函数的 `Context`，并在稍后调用 `cancel()` 时发送取消信号。 Goroutine 通过监听 `ctx.Done()` 通道，在取消信号到达时退出。
-
-
-
-
-
-
 
 ## 互斥锁
 
@@ -2221,7 +2209,6 @@ func TestCounterWaitGroup(t *testing.T) {
 
 }
 ```
-
 
 ## Timer 定时器
 
@@ -2529,7 +2516,6 @@ func main() {
 
 ![image.png](./assets/1698913837413-image.png)
 
-
 ### 管理依赖
 
 Go 使用 Go Modules 来管理包的版本。Go Modules 是 Go 1.11 版本引入的一项功能，它提供了一种更现代和灵活的方式来管理包的依赖关系和版本。
@@ -2575,3 +2561,291 @@ Go 使用 Go Modules 来管理包的版本。Go Modules 是 Go 1.11 版本引入
    ```
 
 这些命令和操作使得 Go Modules 管理包的版本变得更加容易和灵活。 `go.mod` 文件会记录你的项目所使用的所有依赖以及它们的版本信息。
+
+## 常见并发任务
+
+### 仅执行一次-单例模式
+
+单例模式是一种设计模式，其主要目标是确保一个类只有一个实例，并提供一个全局访问点来访问该实例。这意味着无论在应用程序的任何地方创建多少次该类的对象，该类都只有一个实例存在。这通常有助于管理全局资源，确保只有一个实例处理某些特定的任务。
+
+单例模式通常涉及以下几个关键元素：
+
+1. **私有构造函数**：确保类只能通过内部创建实例，而外部无法直接实例化。
+2. **私有静态变量**：用于保存该类的唯一实例。
+3. **公共静态方法**：用于获取该类的实例，通常是通过判断是否已经存在实例来决定是创建新实例还是返回已有实例。
+
+#### 典型的使用场景：
+
+1. **资源共享：** 当多个对象需要共享同一资源，而且该资源只能有一个实例时，使用单例模式可以确保只有一个实例存在，从而有效地管理资源。
+2. **全局对象访问：** 当系统中有一个全局对象需要被所有其他对象访问时，使用单例模式可以提供一个统一的入口点。
+3. **配置管理：** 单例模式可以用于管理全局的配置信息，确保配置信息在系统中的唯一性。
+4. **日志记录：** 在某些情况下，对系统的日志记录需要唯一的记录器，单例模式可以确保只有一个日志记录器。
+5. **线程池管理：** 单例模式可以用于创建线程池，以确保系统中只有一个线程池存在。
+
+需要注意的是，单例模式的使用也带来了一些缺点，比如可能引入全局状态，使得代码难以测试和维护。因此，在使用单例模式时，需要权衡其利弊，并谨慎设计。
+
+下方代码，`sync.Once` 用于确保在多线程环境中只执行一次某个函数，这是 Go 语言中实现单例模式的一种常见方式。
+
+```go
+package once_test
+
+import (
+	"fmt"
+	"sync"
+	"testing"
+	"unsafe"
+)
+// Singleton 结构体用于表示单例对象，这里只包含了一个 data 字段作为示例。
+type Singleton struct {
+	data string
+}
+// singleInstance 用于存储单例对象，而 once 是 sync.Once 类型的变量。
+var singleInstance *Singleton
+var once sync.Once
+
+//GetSingletonObj 函数返回单例对象。
+//它使用 once.Do，该函数会在第一次调用时执行传入的函数，而后的调用将被忽略。
+//在这里，第一次调用会创建单例对象，并输出 "Create Obj"。
+func GetSingletonObj() *Singleton {
+	once.Do(func() {
+		fmt.Println("Create Obj")
+		singleInstance = new(Singleton)
+	})
+	return singleInstance
+}
+
+//TestGetSingletonObj 函数启动了 10 个并发的 goroutine 来获取单例对象，并输出对象的内存地址。
+//由于 sync.Once 的作用，无论有多少个 goroutine 同时调用 GetSingletonObj，实际上只会有一个 goroutine 执行 once.Do 内的函数，确保对象只被创建一次。
+
+func TestGetSingletonObj(t *testing.T) {
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			obj := GetSingletonObj()
+			fmt.Printf("%X\n", unsafe.Pointer(obj))
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+```
+
+`unsafe.Pointer` 是 Go 语言中的一个特殊类型，用于表示通用指针。它可以包含任何数据类型的地址。在 Go 语言中，使用 `unsafe.Pointer` 可以绕过类型系统的一些限制，进行指针的相互转换。
+
+在你的代码中，`fmt.Printf("%X\n", unsafe.Pointer(obj))` 的部分将 `obj` 的地址转换为 `unsafe.Pointer`，然后使用 `%X` 格式化符将其打印为十六进制数。**这种方式通常用于调试或展示内存地址。**
+
+使用 `unsafe` 包需要谨慎，因为它可以绕过 Go 语言的类型安全性。在正常情况下，应该尽量避免使用 `unsafe` 包，除非你确切地知道你在做什么，并且了解潜在的风险。
+
+### 仅需任意任务完成(第一个完成的任务即可结束)
+
+```go
+package concurrency
+
+import (
+	"fmt"
+	"runtime"
+	"testing"
+	"time"
+)
+
+func runTask(id int) string {
+	time.Sleep(10 * time.Millisecond)
+	return fmt.Sprintf("The result is from %d", id)
+}
+
+func FirstResponse() string {
+	numOfRunner := 10
+//这个通道需要允许缓存，否则会导致其他协程阻塞，耗尽资源
+	ch := make(chan string, numOfRunner)
+	for i := 0; i < numOfRunner; i++ {
+		go func(i int) {
+			ret := runTask(i)
+			ch <- ret
+		}(i)
+	}
+	return <-ch
+}
+
+func TestFirstResponse(t *testing.T) {
+	t.Log("Before:", runtime.NumGoroutine())
+	t.Log(FirstResponse())
+	time.Sleep(time.Second * 1)
+	t.Log("After:", runtime.NumGoroutine())
+
+}
+
+```
+
+`runtime.NumGoroutine` 函数用于获取当前程序中正在运行的goroutine的数量。这个函数返回一个整数，表示当前活跃的goroutine的数量。
+
+### 需要所有任务完成（waitgroup类似）
+
+```go
+package util_all_done
+
+import (
+	"fmt"
+	"runtime"
+	"testing"
+	"time"
+)
+
+func runTask(id int) string {
+	time.Sleep(10 * time.Millisecond)
+	return fmt.Sprintf("The result is from %d", id)
+}
+
+func AllResponse() string {
+	numOfRunner := 10
+	ch := make(chan string, numOfRunner)
+	for i := 0; i < numOfRunner; i++ {
+		go func(i int) {
+			ret := runTask(i)
+			ch <- ret
+		}(i)
+	}
+	finalRet := ""
+	for j := 0; j < numOfRunner; j++ {
+		finalRet += <-ch + "\n"
+	}
+	return finalRet
+}
+
+func TestAllResponse(t *testing.T) {
+	t.Log("Before:", runtime.NumGoroutine())
+	t.Log(AllResponse())
+	time.Sleep(time.Second * 1)
+	t.Log("After:", runtime.NumGoroutine())
+
+}
+
+```
+
+## 对象池
+
+### buffered channel
+
+```go
+package object_pool
+
+import (
+	"errors"
+	"time"
+)
+
+type ReusableObj struct {
+}
+
+type ObjPool struct {
+	bufChan chan *ReusableObj //用于缓冲可重用对象
+}
+
+func NewObjPool(numOfObj int) *ObjPool {
+	objPool := ObjPool{}
+	objPool.bufChan = make(chan *ReusableObj, numOfObj)
+	for i := 0; i < numOfObj; i++ {
+		objPool.bufChan <- &ReusableObj{}
+	}
+	return &objPool
+}
+
+func (p *ObjPool) GetObj(timeout time.Duration) (*ReusableObj, error) {
+	select {
+	case ret := <-p.bufChan:
+		return ret, nil
+	case <-time.After(timeout): //超时控制
+		return nil, errors.New("time out")
+	}
+
+}
+
+func (p *ObjPool) ReleaseObj(obj *ReusableObj) error {
+	select {
+	case p.bufChan <- obj:
+		return nil
+	default:
+		return errors.New("overflow")
+	}
+}
+
+```
+
+
+这段代码实现了一个简单的对象池（Object Pool）模式，以下是每个部分的解释：
+
+1. `ReusableObj` 结构体：表示可重用的对象。在这个例子中，`ReusableObj` 只是一个空结构体，实际中可能包含更多属性和方法。
+2. `ObjPool` 结构体：对象池结构体，包含一个缓冲通道 `bufChan`，用于存储可重用对象的指针。这个通道的缓冲大小为 `numOfObj`，在对象池初始化时，会预先创建指定数量的对象并放入通道。
+3. `NewObjPool` 函数：用于创建对象池的实例。它接受一个参数 `numOfObj`，表示初始化时创建的对象数量。函数会创建一个 `ObjPool` 实例，并预先将指定数量的可重用对象放入通道。
+4. `GetObj` 方法：用于从对象池中获取对象。它接受一个超时参数 `timeout`，表示等待对象的最大时间。通过 `select` 语句，它会尝试从通道中取出对象，如果超时则返回错误。
+5. `ReleaseObj` 方法：用于释放对象，将对象放回对象池。通过 `select` 语句，它会尝试将对象放回通道，如果通道已满则返回错误。
+
+这个对象池的设计允许在需要时从池中获取对象，并在使用完毕后将对象放回池中，以便其他地方继续使用。同时，通过超时机制，可以避免长时间等待。这是一种在并发环境下管理资源的常见模式。
+
+
+### sync.pool
+
+使用`sync.Pool`通常是在需要频繁创建和销毁对象时，通过对象池复用对象，从而提高性能。
+
+协程安全，会有锁的开销
+
+生命周期收到GC影响，不适合做连接池等：`sync.Pool`并不提供严格的对象生命周期控制，对象可能在任何时候被垃圾回收。因此，不要在对象上依赖`Finalizer`等特殊的生命周期处理。
+
+总体而言，`sync.Pool` 是一种**用于存储临时对象的机制**，特别适用于需要频繁分配和释放对象的场景，例如在并发编程中。对象池有助于减轻垃圾收集的负担，提高性能。
+
+```go
+package object_pool
+
+import (
+	"fmt"
+	"runtime"
+	"sync"
+	"testing"
+)
+
+func TestSyncPool(t *testing.T) {
+	pool := &sync.Pool{
+//提供一个 New 函数。这个函数在池中没有可用对象时会被调用，用于创建一个新的对象。
+//在这个例子中，New 函数创建一个整数对象并返回。
+		New: func() interface{} {
+			fmt.Println("Create a new object.")
+			return 100
+		},
+	}
+//通过 Get 方法从对象池中获取一个对象，并通过断言将其转换为整数。
+//如果对象池为空，则会调用 New 函数创建一个新对象。
+	v := pool.Get().(int)
+	fmt.Println(v)
+	pool.Put(3)
+//手动触发垃圾回收。 一般不会这么用
+	runtime.GC() //GC 会清除sync.pool中缓存的对象
+// 再次调用，因为上面执行GC，所以仍然会重新创建对象
+	v1, _ := pool.Get().(int)
+	fmt.Println(v1)
+}
+
+func TestSyncPoolInMultiGroutine(t *testing.T) {
+	pool := &sync.Pool{
+		New: func() interface{} {
+			fmt.Println("Create a new object.")
+			return 10
+		},
+	}
+
+	pool.Put(100)
+	pool.Put(100)
+	pool.Put(100)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(id int) {
+			fmt.Println(pool.Get())
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+}
+
+```
