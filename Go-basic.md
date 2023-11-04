@@ -3771,3 +3771,259 @@ func StorePointer(addr *unsafe.Pointer, new unsafe.Pointer)
 - `new`: 要存储的新值，必须是 `unsafe.Pointer` 类型。
 
 这个函数的作用是将 `new` 存储到 `addr` 指向的内存地址，是一个原子操作，保证在多个 goroutine 中的并发访问时不会发生竞争条件。
+
+
+## Json解析
+
+### 反射实现
+
+利用反射实现，通过FeildTag来标识对应的json值
+
+例子代码：
+
+```go
+//文件struct_def.go
+package jsontest
+
+type BasicInfo struct {
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+}
+type JobInfo struct {
+	Skills []string `json:"skills"`
+}
+type Employee struct {
+	BasicInfo BasicInfo `json:"basic_info"`
+	JobInfo   JobInfo   `json:"job_info"`
+}
+
+```
+
+测试
+
+```go
+package jsontest
+
+import (
+	"encoding/json"
+	"fmt"
+	"testing"
+)
+
+var jsonStr = `{
+	"basic_info":{
+	  	"name":"Mike",
+		"age":30
+	},
+	"job_info":{
+		"skills":["Java","Go","C"]
+	}
+}	`
+
+func TestEmbeddedJson(t *testing.T) {
+	e := new(Employee)
+	//json.Unmarshal 函数将 JSON 格式的字符串 jsonStr 解码到 e 中
+	err := json.Unmarshal([]byte(jsonStr), e)
+	if err != nil {
+		t.Error(err)
+	}
+	//fmt.Println(*e): 打印解码后的 Employee 结构体
+	fmt.Println(*e)
+	//json.Marshal 函数将 e 结构体编码为 JSON 格式的字符串，并打印出来
+	if v, err := json.Marshal(e); err == nil {
+		fmt.Println(string(v))
+	} else {
+		t.Error(err)
+	}
+
+}
+
+
+```
+
+### EasyJson(采用代码生产，而非反射) 性能更好
+
+结构创建文件遇上面一样
+
+测试文件：
+
+```go
+package jsontest
+
+import (
+	"fmt"
+	"testing"
+)
+
+var jsonStr = `{
+	"basic_info":{
+	  	"name":"Mike",
+		"age":30
+	},
+	"job_info":{
+		"skills":["Java","Go","C"]
+	}
+}	`
+
+func TestEasyJson(t *testing.T) {
+	e := Employee{}
+	//使用 easyjson 生成的 UnmarshalJSON 方法，将 JSON 格式的字符串解码到 e 结构体中
+	e.UnmarshalJSON([]byte(jsonStr))
+	fmt.Println(e)
+	//使用 easyjson 生成的 MarshalJSON 方法，将 e 结构体编码为 JSON 格式的字符串，并打印出来
+	if v, err := e.MarshalJSON(); err != nil {
+		t.Error(err)
+	} else {
+		fmt.Println(string(v))
+	}
+}
+
+func BenchmarkEasyJson(b *testing.B) {
+	b.ResetTimer()
+	e := Employee{}
+	for i := 0; i < b.N; i++ {
+		err := e.UnmarshalJSON([]byte(jsonStr))
+		if err != nil {
+			b.Error(err)
+		}
+		if _, err = e.MarshalJSON(); err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+```
+
+
+## HTTP
+
+使用 `net/http` 包，我们可以轻松实现一个简单的 HTTP 服务器。
+
+***handlers*** 是 `net/http` 服务器里面的一个基本概念。 handler 对象实现了 `http.Handler` 接口。 编写 handler 的常见方法是，在具有适当签名的函数上使用 `http.HandlerFunc` 适配器。
+
+handler 函数有两个参数，`http.ResponseWriter` 和 `http.Request`。 `response writer` 被用于写入 HTTP 响应数据。
+
+使用 `http.HandleFunc` 函数，可以方便的将我们的 handler 注册到服务器路由。 它是 `net/http` 包中的默认路由，接受一个函数作为参数
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+
+	"time"
+)
+
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello World!")
+	})
+	http.HandleFunc("/time/", func(w http.ResponseWriter, r *http.Request) {
+		t := time.Now()
+		timeStr := fmt.Sprintf("{\"time\": \"%s\"}", t)
+		w.Write([]byte(timeStr))
+	})
+//调用 ListenAndServe 并带上端口和 handler。 nil 表示使用我们刚刚设置的默认路由器
+	http.ListenAndServe(":8080", nil)
+}
+
+```
+
+### RESTful服务构建
+
+使用 `httprouter`构建路由
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/julienschmidt/httprouter"
+)
+
+func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	fmt.Fprint(w, "Welcome!\n")
+}
+
+func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+//ps.ByName("name") 是用于获取参数值的方法
+//当请求的路径为 /hello/somebody 时，ps.ByName("name") 将返回字符串 "somebody"
+	fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+}
+
+func main() {
+	router := httprouter.New()
+	router.GET("/", Index)
+//:name 是一个参数占位符
+	router.GET("/hello/:name", Hello)
+
+	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+```
+
+### 简明例子
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/julienschmidt/httprouter"
+)
+
+type Employee struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+}
+
+var employeeDB map[string]*Employee
+
+func init() {
+	employeeDB = map[string]*Employee{}
+	employeeDB["Mike"] = &Employee{"e-1", "Mike", 35}
+	employeeDB["Rose"] = &Employee{"e-2", "Rose", 45}
+}
+
+func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	fmt.Fprint(w, "Welcome!\n")
+}
+
+func GetEmployeeByName(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	qName := ps.ByName("name")
+	var (
+		ok       bool
+		info     *Employee
+		infoJson []byte
+		err      error
+	)
+	if info, ok = employeeDB[qName]; !ok {
+		w.Write([]byte("{\"error\":\"Not Found\"}"))
+		return
+	}
+	if infoJson, err = json.Marshal(info); err != nil {
+		w.Write([]byte(fmt.Sprintf("{\"error\":,\"%s\"}", err)))
+		return
+	}
+
+	w.Write(infoJson)
+}
+
+func main() {
+	router := httprouter.New()
+	router.GET("/", Index)
+	router.GET("/employee/:name", GetEmployeeByName)
+
+	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+```
