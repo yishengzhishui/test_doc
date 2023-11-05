@@ -2,28 +2,28 @@
 
 ## Summary
 
--   Introduction
-    -   [Hello World](#hello-world)
-    -   [Go CLI Commands](#go-cli-commands)
-    -   [Go Modules](#go-modules)
--   Basic
-    -   [Basic Types](#basic-types)
-    -   [Variables](#variables)
-    -   [Operators](#operators)
-    -   [Conditional Statements](#conditional-statements)
-    -   [Loops](#loops)
-    -   [Arrays](#arrays)
-    -   [Functions](#functions)
--   Advanced
-    -   [Structs](#structs)
-    -   [Maps](#maps)
-    -   [Pointers](#pointers)
-    -   [Methods and Interfaces](#methods-and-interfaces)
-    -   [Errors](#errors)
-    -   [Testing](#testing)
-    -   [Concurrency](#concurrency)
--   Standard Libs
-    -   [Package fmt](#package-fmt)
+- Introduction
+  - [Hello World](#hello-world)
+  - [Go CLI Commands](#go-cli-commands)
+  - [Go Modules](#go-modules)
+- Basic
+  - [Basic Types](#basic-types)
+  - [Variables](#variables)
+  - [Operators](#operators)
+  - [Conditional Statements](#conditional-statements)
+  - [Loops](#loops)
+  - [Arrays](#arrays)
+  - [Functions](#functions)
+- Advanced
+  - [Structs](#structs)
+  - [Maps](#maps)
+  - [Pointers](#pointers)
+  - [Methods and Interfaces](#methods-and-interfaces)
+  - [Errors](#errors)
+  - [Testing](#testing)
+  - [Concurrency](#concurrency)
+- Standard Libs
+  - [Package fmt](#package-fmt)
 
 ## Hello World
 
@@ -86,11 +86,11 @@ $ go version
 
 ## Go Modules
 
--   Go projects are called **modules**
--   Each module has multiple **packages**
--   Each package should has a scoped functionality. Packages talk to each other to compose the code
--   A module needs at least one package, the **main**
--   The package main needs a entry function called **main**
+- Go projects are called **modules**
+- Each module has multiple **packages**
+- Each package should has a scoped functionality. Packages talk to each other to compose the code
+- A module needs at least one package, the **main**
+- The package main needs a entry function called **main**
 
 ```bash
 # Create Module
@@ -109,23 +109,24 @@ Example: github.com/spf13/cobra
 
 ## Basic Types
 
-|    Type    |               Set of Values                |                    Values                     |
-| :--------: | :----------------------------------------: | :-------------------------------------------: |
-|    bool    |                  boolean                   |                  true/false                   |
-|   string   |            array of characters             |             needs to be inside ""             |
-|    int     |                  integers                  |             32 or 64 bit integer              |
+
+|    Type    |               Set of Values               |                    Values                    |
+| :----------: | :------------------------------------------: | :---------------------------------------------: |
+|    bool    |                  boolean                  |                  true/false                  |
+|   string   |            array of characters            |             needs to be inside ""             |
+|    int    |                  integers                  |             32 or 64 bit integer             |
 |    int8    |               8-bit integers               |                 [ -128, 128 ]                 |
-|   int16    |              16-bit integers               |               [ -32768, 32767]                |
-|   int32    |              32-bit integers               |          [ -2147483648, 2147483647]           |
-|   int64    |              64-bit integers               | [ -9223372036854775808, 9223372036854775807 ] |
-|   uint8    |          8-bit unsigned integers           |                  [ 0, 255 ]                   |
-|   uint16   |          16-bit unsigned integers          |                 [ 0, 65535 ]                  |
+|   int16   |              16-bit integers              |               [ -32768, 32767]               |
+|   int32   |              32-bit integers              |          [ -2147483648, 2147483647]          |
+|   int64   |              64-bit integers              | [ -9223372036854775808, 9223372036854775807 ] |
+|   uint8   |          8-bit unsigned integers          |                  [ 0, 255 ]                  |
+|   uint16   |          16-bit unsigned integers          |                 [ 0, 65535 ]                 |
 |   uint32   |          32-bit unsigned integers          |               [ 0, 4294967295 ]               |
 |   uint64   |          64-bit unsigned integers          |          [ 0, 18446744073709551615 ]          |
-|  float32   |                32-bit float                |                                               |
-|  float64   |                64-bit float                |                                               |
-| complex64  | 32-bit float with real and imaginary parts |                                               |
-| complex128 | 64-bit float with real and imaginary parts |                                               |
+|  float32  |                32-bit float                |                                              |
+|  float64  |                64-bit float                |                                              |
+| complex64 | 32-bit float with real and imaginary parts |                                              |
+| complex128 | 64-bit float with real and imaginary parts |                                              |
 |    byte    |                sets of bits                |                alias for uint8                |
 |    rune    |             Unicode characters             |                alias for int32                |
 
@@ -179,38 +180,41 @@ const pi = 3.1415
 
 Arithmetic Operators
 
+
 | Symbol |      Operation      |                Valid Types                |
-| :----: | :-----------------: | :---------------------------------------: |
-|  `+`   |         Sum         | integers, floats, complex values, strings |
-|  `-`   |     Difference      |     integers, floats, complex values      |
-|  `*`   |       Product       |     integers, floats, complex values      |
-|  `/`   |      Quotient       |     integers, floats, complex values      |
-|  `%`   |      Remainder      |                 integers                  |
-|  `&`   |     Bitwise AND     |                 integers                  |
-|  `|`   |     Bitwise OR      |                 integers                  |
-|  `^`   |     Bitwise XOR     |                 integers                  |
-|  `&^`  | Bit clear (AND NOT) |                 integers                  |
-|  `<<`  |     Left shift      |        integer << unsigned integer        |
+| :------: | :-------------------: | :-----------------------------------------: |
+|  `+`  |         Sum         | integers, floats, complex values, strings |
+|  `-`  |     Difference     |     integers, floats, complex values     |
+|  `*`  |       Product       |     integers, floats, complex values     |
+|  `/`  |      Quotient      |     integers, floats, complex values     |
+|  `%`  |      Remainder      |                 integers                 |
+|  `&`  |     Bitwise AND     |                 integers                 |
+|   `   |          `          |                Bitwise OR                |
+|  `^`  |     Bitwise XOR     |                 integers                 |
+|  `&^`  | Bit clear (AND NOT) |                 integers                 |
+|  `<<`  |     Left shift     |        integer << unsigned integer        |
 |  `>>`  |     Right shift     |        integer >> unsigned integer        |
 
 Comparison Operators
 
-| Symbol |    Operation     |
-| :----: | :--------------: |
-|  `==`  |      Equal       |
-|  `!=`  |    Not equal     |
-|  `<`   |       Less       |
-|  `<=`  |  Less or equal   |
-|  `>`   |     Greater      |
+
+| Symbol |    Operation    |
+| :------: | :----------------: |
+|  `==`  |      Equal      |
+|  `!=`  |    Not equal    |
+|  `<`  |       Less       |
+|  `<=`  |  Less or equal  |
+|  `>`  |     Greater     |
 |  `>=`  | Greater or equal |
 
 Logical Operators
 
+
 | Symbol |    Operation    |
-| :----: | :-------------: |
+| :------: | :---------------: |
 |  `&&`  | Conditional AND |
-|  `||`  | Conditional OR  |
-|  `!`   |       NOT       |
+|   `   |                |
+|  `!`  |       NOT       |
 
 [Return to Summary](#summary)
 
