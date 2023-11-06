@@ -1,4 +1,4 @@
-## 1.第一讲 并发编程
+## 1.第一讲 并发编程-context
 
 ![image.png](./assets/1691675805006-image.png)
 
@@ -779,3 +779,45 @@ var interfaceVar MyInterface = obj // 也可以将 MyStruct 实例赋值给接�
 ```
 
 这样，`MyStruct` 实例就可以在两种类型的变量中自由转换。
+
+## 2.并发编程-sync
+
+### 1）sync.Mutex and sync.REMutex
+
+Mutex可以看作是锁，RWMutex则是读写锁
+
+一般用法是将Mutex/RWMutex和需要被保护的资源封装在一个结构体内
+
+```go
+// PublicResource 你永远不知道你的用户拿了它会干啥
+// 他即便不用 PublicResourceLock 你也毫无办法
+// 如果你用这个resource，一定要用锁
+var PublicResource interface{}
+var PublicResourceLock sync.Mutex
+
+// privateResource 要好一点，祈祷你的同事会来看你的注释，知道要用锁
+// 很多库都是这么写的，我也写了很多类似的代码=。=
+var privateResource interface{}
+var privateResourceLock sync.Mutex
+
+// safeResource 很棒，所有的期望对资源的操作都只能通过定义在上 safeResource 上的方法来进行
+type safeResource struct {
+	resource interface{}
+	lock     sync.Mutex
+}
+
+func (s *safeResource) DoSomethingToResource() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+}
+```
+
+使用锁的时候，优先使用RWMutex。
+
+RWMutex核心四个方法：RLock、RUnlock、Lock、Unlock
+
+Mutex是：Lock 、Unlock
+
+### 2）代码演示 SafeMap的LoadOrStore
+
+SafeMap可以看作是map的一个线程安全的封装，增加一个LoadOrStore的方法
