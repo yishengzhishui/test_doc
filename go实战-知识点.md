@@ -754,7 +754,6 @@ func main() {
 
 在这个例子中，`Person` 结构体包含一个 `Address` 类型的字段，实现了结构体的嵌套。
 
-
 一个结构体的实例可以同时赋值给结构体类型和实现了某个接口的接口类型。这是因为 Go 语言中的类型是基于结构的，而接口是基于方法的。
 
 假设有以下结构体和接口定义：
@@ -821,3 +820,316 @@ Mutex是：Lock 、Unlock
 ### 2）代码演示 SafeMap的LoadOrStore
 
 SafeMap可以看作是map的一个线程安全的封装，增加一个LoadOrStore的方法
+
+需要double-check：
+
+1. 加读锁先检查一遍
+2. 释放读锁
+3. 加写锁
+4. 再检查一遍
+
+```go
+package sync
+
+import "sync"
+
+type SafeMap[K comparable, V any] struct {
+	m     map[K]V
+	mutex sync.RWMutex
+}
+
+// LoadOrStore loaded 代表是返回老的对象，还是返回了新的对象
+// g1 (key1, 123)  g2 (key1, 456)
+func (s *SafeMap[K, V]) LoadOrStore(key K, newVal V) (val V, loaded bool) {
+	oldVal, ok := s.get(key)
+	if ok {
+		return oldVal, true
+	}
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+//这里如果不再检查一遍，g1先到了，后面的g2有可能会将数据进行覆盖
+	oldVal, ok = s.m[key]
+	if ok {
+		return oldVal, true
+	}
+	s.m[key]= newVal
+	return newVal, false
+}
+
+func  (s *SafeMap[K, V]) get(key K) (V, bool){
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	oldVal, ok := s.m[key]
+	return oldVal, ok
+}
+```
+
+### 3）代码演示-线程安全的ArrayList
+
+```go
+package demo
+
+import "sync"
+
+type SafeList[T any] struct {
+	List[T]
+	lock sync.RWMutex
+}
+
+func (s *SafeList[T]) Get(index int) (T, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.List.Get(index)
+}
+
+func (s *SafeList[T]) Append(t T) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.List.Append(t)
+}
+
+```
+
+思路:切片本身不是线程安全的，所以最简单的做法就是**利用读写锁封装一
+下**。这也是典型的装饰器模式的应用。
+
+如果考虑扩展性，那么需要预先定义一个 List 接口，后续可以有
+ArrayList，LinkedList，锁实现的线程安全 List，以及无锁实现的线程安全List
+
+任何非线程安全的类型、接口都可以利用读写锁 + 装饰器模式无侵入式地改
+造为线程安全的类型、接口
+
+### 4）代码示例
+
+```go
+type List[T any] interface {
+	Get(index int) T
+	Set(index int, t T)
+	DeleteAt(index int) T
+	Append(t T)
+}
+
+type ArrayList[T any] struct {
+	vals []T
+}
+
+func (a *ArrayList[T]) Get(index int) T {
+	return a.vals[index]
+}
+
+func (a *ArrayList[T]) Set(index int, t T) {
+	if index >= len(a.vals) || index < 0 {
+		panic("index 超出范围")
+	}
+	a.vals[index] = t
+}
+
+func (a *ArrayList[T]) DeleteAt(index int) T {
+	if index >= len(a.vals) || index < 0 {
+		panic("index 超出范围")
+	}
+	res := a.vals[index]
+	a.vals = append(a.vals[:index], a.vals[index+1:]...)
+	return res
+}
+
+func (a *ArrayList[T]) Append(t T) {
+	a.vals = append(a.vals, t)
+}
+
+func NewArrayList[T any](initCap int) *ArrayList[T] {
+	return &ArrayList[T]{vals: make([]T, 0, initCap)}
+}
+
+type SafeListDecorator[T any] struct {
+	l List[T]
+	mutex sync.RWMutex
+}
+
+func (s *SafeListDecorator[T]) Get(index int) T {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.l.Get(index)
+}
+func (s *SafeListDecorator[T]) Set(index int, t T) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.l.Set(index, t)
+}
+func (s *SafeListDecorator[T]) DeleteAt(index int) T {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return s.l.DeleteAt(index)
+}
+func (s *SafeListDecorator[T]) Append(t T) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.l.Append(t)
+}
+```
+
+代码解释：
+
+这段代码定义了一个泛型接口 `List` 和一个实现该接口的泛型结构体 `ArrayList`，以及一个安全的列表修饰器 `SafeListDecorator`。
+
+1. **List 接口：**
+
+   - `Get(index int) T`: 获取列表指定索引位置的元素。
+   - `Set(index int, t T)`: 在列表的指定索引位置设置元素。
+   - `DeleteAt(index int) T`: 删除并返回列表指定索引位置的元素。
+   - `Append(t T)`: 在列表末尾追加元素。
+2. **ArrayList 结构体：**
+
+   - `vals []T`: 存储元素的切片。
+   - `Get(index int) T`: 实现 List 接口，获取列表指定索引位置的元素。
+   - `Set(index int, t T)`: 实现 List 接口，设置列表指定索引位置的元素。
+   - `DeleteAt(index int) T`: 实现 List 接口，删除并返回列表指定索引位置的元素。
+   - `Append(t T)`: 实现 List 接口，在列表末尾追加元素。
+   - `NewArrayList(initCap int) *ArrayList[T]`: 初始化 ArrayList，返回指定初始容量的实例。
+3. **SafeListDecorator 结构体：**
+
+   - `l List[T]`: 被修饰的 List 实例。
+   - `mutex sync.RWMutex`: 读写锁，用于保护被修饰的 List 操作的并发安全性。
+   - `Get(index int) T`: 通过读锁保护，调用被修饰 List 的 Get 方法。
+   - `Set(index int, t T)`: 通过写锁保护，调用被修饰 List 的 Set 方法。
+   - `DeleteAt(index int) T`: 通过写锁保护，调用被修饰 List 的 DeleteAt 方法。
+   - `Append(t T)`: 通过写锁保护，调用被修饰 List 的 Append 方法。
+
+修饰器 `SafeListDecorator` 的作用是在原有的列表操作上加上读写锁，保证在并发环境下对列表的操作是安全的。这是一种常见的手段，确保在多个 goroutine 中同时访问列表时不会发生数据竞争和不一致性。
+
+希望这样解释能够帮助你理解这段代码。如果有其他问题，随时告诉我。
+
+### 源码相关
+
+锁实现的模版
+
+![image.png](./assets/1699284280394-image.png)
+
+锁的一般实现都是依赖于：自旋作为快路径，等待队列作为慢路径
+
+Go 的 Mutex 大致符合模板，但是做了针对性的优化。
+理解关键点：
+
+1. state 就是用来控制锁状态的核心，所谓加锁，就是把 state 修改为某个值，解锁也是类似
+2. sema 是用来处理沉睡、唤醒的信号量，依赖于两
+   个 runtime 调用:
+   * runtime_ SemacquireMutex: sema 加1并且挂起 goroutine
+   * runtime Semrelease: sema减1并且唤醒sema 上等待的一个goroutine
+
+在 `sync` 包中，`Mutex` 的实现采用了一种两阶段的策略，将并发访问的情况分为三种情况：一次拿取成功(一次自旋)、快路径和慢路径。
+
+1. **自旋（Spin）作为快路径：** 当一个 goroutine 尝试获取锁时，它首先会采用自旋的方式进行尝试。自旋是一种忙等的策略，即在一段时间内反复检查锁的状态，而不是立即进入休眠状态。这样做是因为自旋的代价相对较低，可以在短时间内完成，避免了切换线程的开销。如果在自旋的过程中成功获取到锁，那么这就是快路径，整个操作很迅速。
+2. **等待队列作为慢路径：** 如果自旋一定次数后仍然无法获取到锁，或者当前锁已经被其他 goroutine 持有，那么该 goroutine 就会进入等待队列，进入休眠状态。等待队列是一种慢路径，因为涉及到线程的挂起和唤醒，这可能需要更多的系统开销。等待队列中的 goroutine 会在锁释放时被唤醒，然后再次尝试获取锁。
+
+通过这种两阶段的策略，`Mutex` 在低竞争和短时间的情况下可以通过自旋快速获取锁，而在高竞争或长时间的情况下，通过等待队列避免了忙等的资源浪费，提高了效率。
+
+### 锁的拿取步骤
+
+1. 先上来一个 CAS 操作，如果这把锁正空闲，井且没人抢，那么就直接成功
+2. 否则，自旋几次，如果这个时候成功了，也不用加入队列
+3. 否则，加入队列
+4. 从队列中被唤醒：
+
+* 正常模式：和新来的一起抢锁，但是大概率失败
+* 饥饿模式：肯定拿到锁
+
+下面是对描述中每个步骤的一些补充和说明：
+
+1. **CAS 操作：** CAS（Compare-And-Swap）是一种原子操作，用于尝试将某个值更新为新值，但仅在当前值等于预期值时才成功。这是一种常见的自旋锁实现方式，通过CAS判断锁是否被占用，如果没有被占用，那么当前 goroutine 就成功获取了锁。
+2. **自旋几次：** 这是一种自旋的策略，即在一定次数内忙等待锁的释放。如果在自旋的次数内成功获取到了锁，那么可以避免进入队列，提高性能。但需要注意自旋次数的选择，过少可能导致无谓的自旋，过多可能浪费CPU资源。
+3. **加入队列：** 如果自旋不成功，说明锁仍然被占用，那么当前 goroutine 将加入等待队列，进入休眠状态。这是慢路径的一部分，因为涉及到线程的挂起和唤醒。
+4. **从队列中被唤醒：**
+   - **正常模式：** 当从队列中被唤醒时，可能与其他等待队列中的 goroutine 一起竞争锁。这里的描述是正确的，但需要注意正常模式下可能会按照先到先服务的原则，尽管有竞争。
+   - **饥饿模式：** 在饥饿模式下，有可能给予等待时间较长的 goroutine 更高的优先级，使其更有可能获取锁。这是为了提高整体性能，但也可能导致某些 goroutine 长时间无法获取锁。
+
+### Mutex 和RWMutex 应用场景
+
+`Mutex` 和 `RWMutex` 都是 Go 语言中用于实现互斥锁的工具，但它们的应用场景有一些不同。
+
+1. **Mutex（互斥锁）：**
+
+   - **适用场景：** 主要用于对临界区的访问进行互斥控制，保证同一时刻只有一个 goroutine 能够进入临界区。
+   - **特点：** 适用于读写操作都很频繁、但写操作时间较短的场景。在临界区内，同时只允许一个 goroutine 进行操作，其他 goroutine 需要等待。
+2. **RWMutex（读写锁）：**
+
+   - **适用场景：** 主要用于在读多写少的情况下提供更好的性能。允许多个 goroutine 同时进行读操作，但在写操作时会阻塞所有其他的读和写操作。
+   - **特点：** 适用于读操作远远多于写操作的场景，可以提高并发性。在读多写少的情况下，使用 `RWMutex` 可以提高程序的并发性能。
+
+总的来说，`Mutex` 适用于读写操作都很频繁的情况，而 `RWMutex` 则适用于读多写少的情况。
+
+### Mutex相关面试要点
+
+* Mutex 的公平性：GO 的锁是不公平锁。为什么它不设计为公平锁？
+* Mutex 的两种模式，以及两种模式的切换时机（队列等超过1ms进入饥饿模式）：正常模式、饥饿模式
+* 为什么 Mutex 要设计出来这两种模式？这个问题基本等价于为什么它不设计为公平锁。（提高性能）
+* 如果队列里面有 goroutine 在等待锁，那么新来的 goroutine 有可能拿到锁吗？当然，而且大概率。
+* Mutex 是不是可重入的锁？显然不是。
+* RwMutex 和 Mutex 有什么区别？如何选择这两个？几乎完全是写操作的选 Mutex，其它时候优先选
+  择RwMutex。
+* Mutex 是怎么做到挂起 goroutine 的，以及是如何唤醒 goroutine 的？在这个语境下，只需要回答sema 这个字段以及 runtime_ Semacquire 和 runtime_ Semrelease 两个调用就可以。
+
+### sync.Once
+
+`sync.Once` 是 Go 语言标准库中的一个类型，用于确保某个操作只执行一次。`sync.Once` 提供了一种安全的机制，保证在并发环境中某个函数只被调用一次，无论有多少个 goroutine 尝试调用它。
+
+使用 `sync.Once` 的一般步骤如下：
+
+1. 创建一个 `sync.Once` 类型的变量。
+2. 定义一个需要执行的函数，通常是一个初始化函数。
+3. 调用 `Once` 的 `Do` 方法，并将要执行的函数作为参数传递给它。
+
+示例代码如下：
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+func main() {
+	var once sync.Once
+
+	// 函数 foo 只会被执行一次
+	foo := func() {
+		fmt.Println("This is foo.")
+	}
+
+	// 多个 goroutine 尝试调用 foo，但只有第一个调用会执行，其他调用会被忽略
+	for i := 0; i < 5; i++ {
+		go func() {
+			once.Do(foo)
+		}()
+	}
+
+	// 等待所有 goroutine 完成
+	select {}
+}
+```
+
+在上面的例子中，`foo` 函数只会被执行一次，即使有多个 goroutine 尝试调用它。`sync.Once` 内部会确保 `Do` 方法只在第一次调用时执行传递的函数。
+
+这样的设计常用于初始化操作，确保初始化代码只会被执行一次。如果在多个地方需要确保某个操作只执行一次，可以考虑使用 `sync.Once`。
+
+有一个注意的问题，就是在结构体使用
+
+```go
+package demo
+
+import (
+	"fmt"
+	"sync"
+)
+
+type OnceClose struct {
+	close sync.Once
+}
+// 这个应该是指针接收器，如果是值接收器，会多次执行，因为值接收器是会复制新的结构体而不是使用指针指向原结构体
+func (o *OnceClose) Close() error {
+	o.close.Do(func() {
+		fmt.Println("close")
+	})
+	return nil
+}
+```
