@@ -29,7 +29,7 @@
      ctx, cancel := context.WithCancel(context.Background())
      defer cancel() // 确保在不再需要时取消
      ```
-5. **`context.WithTimeout` 和 `context.WithDeadline`：**
+5. **`context.WithTimeout` 和 `context.WithDeadline`（本质上是一样的）：**
 
    - `context.WithTimeout` 返回一个在**超时时间到达时自动取消**的 `Context`。
    - `context.WithDeadline` 返回一个在**指定截止时间到达时自动取消**的 `Context`。
@@ -184,7 +184,6 @@ func TestContext(t *testing.T) {
 
 ### ErrGroup
 
-
 `errgroup` 是 Go 语言标准库 `golang.org/x/sync/errgroup` 包中的一个类型，用于简化 goroutine 的错误处理。它提供了一种方便的方式来等待一组 goroutine 完成，并能够在其中任何一个返回错误时取消整个组的执行。
 
 以下是 `errgroup` 的简要用法：
@@ -297,3 +296,86 @@ func TestErrgroup(t *testing.T) {
 4. **更多控制：** `context` 提供了更多的控制，例如 `Done()` 方法用于接收任务组的完成信号，以及 `Err()` 方法用于获取取消的原因。
 
 总体来说，`context` 和 `errgroup` 结合使用，可以提供更全面的控制和管理，并更好地适应不同的需求场景。使用 `context` 可以使得任务组的管理更加灵活，更容易适应不同的场景和需求。
+
+### 源码相关
+
+#### cancelCtx
+
+在 Go 中，`context` 包中的 `WithCancel` 函数创建了一个新的 `context.Context`，同时返回一个用于取消的 `cancel` 函数。这个 `cancel` 函数内部会关闭一个 `cancelCtx`，该 `cancelCtx` 是 `cancelCtx` 类型的结构体。这个结构体定义如下：
+
+```go
+type cancelCtx struct {
+	Context
+	done chan struct{} // 用于通知已经取消的信号
+	err  error          // 存储取消的原因
+	mu   sync.Mutex     // 保护以下字段
+}
+
+func (c *cancelCtx) Done() <-chan struct{} {
+	return c.done
+}
+
+func (c *cancelCtx) Err() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.err
+}
+
+func (c *cancelCtx) String() string {
+	return fmt.Sprintf("%v.WithCancel", c.Context)
+}
+```
+
+这个结构体实现了 `Context` 接口，其中包含一个 `done` 通道用于通知已经取消的信号，一个 `err` 字段用于存储取消的原因，以及一个互斥锁 `mu` 用于保护这些字段。
+
+`WithCancel` 函数创建了一个 `cancelCtx` 实例，将其作为新的 `Context` 返回。当调用 `cancel` 函数时，它会向 `done` 通道发送信号，表示 `Context` 已经被取消，并设置 `err` 字段为 `context.Canceled`。这样，任何监听 `Done` 通道的 goroutine 都会收到信号，知道 `Context` 已经取消。
+
+在实际使用中，我们可以通过调用 `cancel` 函数来手动取消 `Context`，以便通知其相关的任务停止执行。
+
+#### valueCtx和timerCtx
+
+在 `context` 包中，`valueCtx` 和 `timeCtx` 是 `context` 包中两个具体的类型。这两个类型分别用于实现 `WithValue` 和 `WithTimeout` 函数。
+
+1. **valueCtx**：`valueCtx` 实现了 `Context` 接口，它的主要目的是在 `WithValue` 函数中创建一个带有新值的上下文。它包含了一个 `key` 和一个 `value`，这对应于键值对，允许我们在上下文中存储和检索值。当你调用 `WithValue` 时，它会创建一个新的 `valueCtx`，并将这个键值对添加到上下文中。
+
+   简化的伪代码如下：
+
+   ```go
+   type valueCtx struct {
+       Context
+       key, val interface{}
+   }
+
+   func WithValue(parent Context, key, val interface{}) Context {
+       return &valueCtx{
+           Context: parent,
+           key:     key,
+           val:     val,
+       }
+   }
+   ```
+2. timerCtx
+
+   `timerCtx` 是 `context` 包中的一个内部类型，用于实现具有超时功能的上下文。它的原理涉及 Go 语言的协程和定时器机制。
+
+   1. **继承关系：** `timerCtx` 继承自 `cancelCtx`，这是因为超时是可以被取消的，而 `cancelCtx` 实现了 `Context` 接口。
+   2. **定时器：** `timerCtx` 内部包含一个 `time.Timer` 对象，用于实现超时机制。`time.Timer` 是 Go 语言标准库中的一个定时器，它可以在指定的时间后发送一个事件给一个通道。
+   3. **实现超时：** 当创建一个 `timerCtx` 时，会同时创建一个 `time.Timer`，并将其保存在 `timerCtx` 中。这个定时器的超时时间就是上下文的超时时间。
+   4. **取消：** 如果上下文的 `cancel` 方法被调用（例如通过调用 `cancel` 函数或者超时发生），`cancelCtx` 的 `cancel` 方法会被触发。这个方法会关闭与父上下文的连接，并取消子上下文。同时，如果有定时器在运行，它也会被停止。
+   5. **协程：** 在 Go 中，协程是轻量级的线程。当一个协程（goroutine）使用了 `timerCtx` 创建的上下文，并且超时时间到达，`timerCtx` 会取消它的父上下文，并通过关闭 `timerCtx.Done` 通道通知相关的协程。
+
+   这样，通过 `timerCtx` 的机制，我们可以在一段时间后自动取消与上下文相关联的任务。这对于处理超时场景非常有用，例如在网络请求中设置超时时间，确保不会因为等待太久而导致整个程序变得不响应。
+
+   **简单的回答**：在 Go 语言中，`timerCtx` 是 `context` 包中的一个实现，用于在一段时间后自动取消与上下文相关联的任务。它基于 `time.Timer` 实现了超时机制，当上下文的超时时间到达时，`timerCtx` 会触发取消操作，并通过关闭 `Done` 通道通知相关的协程。这使得我们能够很方便地处理一些需要在一定时间内完成的任务，比如设置网络请求的超时时间。
+
+### 注意事项：
+
+* 一般只用作**方法参数**，而且是作为第一个参数
+* 所有的公共方法，除非是util，helper之类的，否则**都加上context参数**
+* **不要用作结构体字段**，除非把你的结构体本身也是表达一个上下文的概念（http的request）
+
+#### 面试要点
+
+* context.Context 使用场景：上下文传递与超时控制
+* context.Context 原理：父亲如何控制儿子：通过儿子主动加入到父亲的children里面，父亲只要遍历就行
+* valueCtx和timeCtx的原理
