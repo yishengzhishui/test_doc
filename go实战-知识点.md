@@ -379,3 +379,227 @@ func (c *cancelCtx) String() string {
 * context.Context 使用场景：上下文传递与超时控制
 * context.Context 原理：父亲如何控制儿子：通过儿子主动加入到父亲的children里面，父亲只要遍历就行
 * valueCtx和timeCtx的原理
+
+### 其他
+
+#### 装饰器模式
+
+装饰器模式是一种结构型设计模式，它允许行为在不修改现有代码的情况下动态地添加到对象。这种模式通过创建一个包装类，也就是装饰器，来包装原始类的实例，从而在运行时添加新的功能。
+
+下面是一个简单的装饰器模式的例子，假设我们有一个简单的咖啡类：
+
+```go
+package main
+
+import "fmt"
+
+type Coffee interface {
+	Cost() int
+	Description() string
+}
+
+type SimpleCoffee struct{}
+
+func (c *SimpleCoffee) Cost() int {
+	return 5
+}
+
+func (c *SimpleCoffee) Description() string {
+	return "Simple Coffee"
+}
+```
+
+现在，我们希望能够在不修改 `SimpleCoffee` 类的情况下为其添加额外的功能，比如添加牛奶和糖。我们可以使用装饰器模式来实现：
+
+```go
+package main
+
+import "fmt"
+
+// 原始的咖啡类
+type Coffee interface {
+	Cost() int
+	Description() string
+}
+
+type SimpleCoffee struct{}
+
+func (c *SimpleCoffee) Cost() int {
+	return 5
+}
+
+func (c *SimpleCoffee) Description() string {
+	return "Simple Coffee"
+}
+
+// 装饰器接口
+type CoffeeDecorator interface {
+	Cost() int
+	Description() string
+}
+
+// 牛奶装饰器
+type MilkDecorator struct {
+	Coffee Coffee
+}
+
+func (m *MilkDecorator) Cost() int {
+	return m.Coffee.Cost() + 2
+}
+
+func (m *MilkDecorator) Description() string {
+	return m.Coffee.Description() + " with Milk"
+}
+
+// 糖装饰器
+type SugarDecorator struct {
+	Coffee Coffee
+}
+
+func (s *SugarDecorator) Cost() int {
+	return s.Coffee.Cost() + 1
+}
+
+func (s *SugarDecorator) Description() string {
+	return s.Coffee.Description() + " with Sugar"
+}
+```
+
+现在，我们可以创建一个原始的咖啡对象，然后通过叠加装饰器来添加额外的功能：
+
+```go
+func main() {
+	coffee := &SimpleCoffee{}
+	fmt.Println(coffee.Cost())        // 输出: 5
+	fmt.Println(coffee.Description()) // 输出: Simple Coffee
+
+	milkCoffee := &MilkDecorator{Coffee: coffee}
+	fmt.Println(milkCoffee.Cost())        // 输出: 7
+	fmt.Println(milkCoffee.Description()) // 输出: Simple Coffee with Milk
+
+	sugarMilkCoffee := &SugarDecorator{Coffee: milkCoffee}
+	fmt.Println(sugarMilkCoffee.Cost())        // 输出: 8
+	fmt.Println(sugarMilkCoffee.Description()) // 输出: Simple Coffee with Milk with Sugar
+}
+```
+
+通过这样的方式，我们可以在不修改原始咖啡类的情况下，通过组合装饰器来动态地添加新的功能。
+
+#### 结构体类型与接口类型
+
+##### 结构体与接口的嵌套（结构体的字段可以是一个接口类型）
+
+结构体的字段可以是一个接口类型。这样做的好处是，结构体的**这个字段可以持有任何实现了该接口的类型的实例**。
+
+以下是一个示例：
+
+```go
+package main
+
+import "fmt"
+
+// 定义一个接口
+type Speaker interface {
+	Speak() string
+}
+
+// 实现接口的类型
+type Dog struct{}
+
+func (d Dog) Speak() string {
+	return "Woof!"
+}
+
+// 结构体包含一个接口类型的字段
+type Animal struct {
+	Name    string
+	Speaker Speaker
+}
+
+func main() {
+	// 创建一个 Dog 实例
+	dog := Dog{}
+
+	// 创建一个 Animal 实例，将 Dog 实例赋给 Speaker 接口类型的字段
+	animal := Animal{
+		Name:    "Buddy",
+		Speaker: dog,
+	}
+
+	// 调用 Speak 方法
+	fmt.Println(animal.Speaker.Speak()) // 输出: Woof!
+}
+```
+
+在这个例子中，`Animal` 结构体包含一个 `Speaker` 接口类型的字段，而 `Dog` 类型实现了 `Speaker` 接口。因此，我们可以将 `Dog` 类型的实例赋给 `Animal` 结构体的 `Speaker` 字段。
+
+##### 结构体与结构体嵌套
+
+一个结构体的字段可以是另一个结构体。这种情况下，你可以在一个结构体中嵌套另一个结构体，这被称为结构体的嵌套。
+
+以下是一个简单的示例：
+
+```go
+package main
+
+import "fmt"
+
+// 定义一个结构体
+type Address struct {
+	City    string
+	Country string
+}
+
+// 另一个结构体，包含一个 Address 类型的字段
+type Person struct {
+	Name    string
+	Age     int
+	Address Address
+}
+
+func main() {
+	// 创建一个 Address 实例
+	address := Address{
+		City:    "New York",
+		Country: "USA",
+	}
+
+	// 创建一个 Person 实例，将 Address 实例赋给 Address 字段
+	person := Person{
+		Name:    "John",
+		Age:     30,
+		Address: address,
+	}
+
+	// 访问嵌套的字段
+	fmt.Println(person.Address.City) // 输出: New York
+}
+```
+
+在这个例子中，`Person` 结构体包含一个 `Address` 类型的字段，实现了结构体的嵌套。
+
+
+一个结构体的实例可以同时赋值给结构体类型和实现了某个接口的接口类型。这是因为 Go 语言中的类型是基于结构的，而接口是基于方法的。
+
+假设有以下结构体和接口定义：
+
+```go
+type MyStruct struct {
+    // 结构体字段
+}
+
+type MyInterface interface {
+    SomeMethod()
+}
+```
+
+如果 `MyStruct` 结构体实现了 `SomeMethod` 方法，那么一个 `MyStruct` 类型的实例既可以被赋值给 `MyStruct` 类型的变量，也可以被赋值给实现了 `MyInterface` 接口的变量：
+
+```go
+var obj MyStruct
+var structVar MyStruct = obj // 可以将 MyStruct 实例赋值给结构体类型的变量
+
+var interfaceVar MyInterface = obj // 也可以将 MyStruct 实例赋值给接口类型的变量
+```
+
+这样，`MyStruct` 实例就可以在两种类型的变量中自由转换。
