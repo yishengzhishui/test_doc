@@ -384,7 +384,9 @@ func (c *cancelCtx) String() string {
 
 #### 装饰器模式
 
-装饰器模式是一种结构型设计模式，它允许行为在不修改现有代码的情况下动态地添加到对象。这种模式通过创建一个包装类，也就是装饰器，来包装原始类的实例，从而在运行时添加新的功能。
+装饰器模式是一种结构型设计模式，它允许行为在不修改现有代码的情况下动态地添加到对象。这种模式通过**创建一个包装类，也就是装饰器，来包装原始类的实例**，从而在运行时添加新的功能。
+
+##### 代码1
 
 下面是一个简单的装饰器模式的例子，假设我们有一个简单的咖啡类：
 
@@ -484,6 +486,180 @@ func main() {
 ```
 
 通过这样的方式，我们可以在不修改原始咖啡类的情况下，通过组合装饰器来动态地添加新的功能。
+
+###### 解释
+
+`MilkDecorator` 结构体实现了 `CoffeeDecorator` 接口，而 `SugarDecorator` 结构体也实现了 `CoffeeDecorator` 接口。同时，由于 `MilkDecorator` 中包含了一个 `Coffee` 类型的字段，所以 `MilkDecorator` 也间接实现了 `Coffee` 接口。这使得 `MilkDecorator` 实例可以被赋值给 `Coffee` 接口类型的变量。
+
+##### 代码2
+
+下面是一个稍微复杂一点的装饰器模式的例子：
+
+```go
+package main
+
+import "fmt"
+
+// Component 接口定义了一个基础组件应该有的方法
+type Component interface {
+	Operation() string
+}
+
+// ConcreteComponent 是 Component 接口的具体实现
+type ConcreteComponent struct{}
+
+func (c *ConcreteComponent) Operation() string {
+	return "ConcreteComponent"
+}
+
+// Decorator 接口定义了装饰器应该实现的方法
+type Decorator interface {
+	Component
+}
+
+// BaseDecorator 是装饰器的基础结构，包含了一个 Component 实例
+//
+type BaseDecorator struct {
+	component Component
+}
+
+func (d *BaseDecorator) Operation() string {
+	if d.component != nil {
+		return d.component.Operation()
+	}
+	return ""
+}
+
+// ConcreteDecoratorA 是具体的装饰器，添加了一些额外的功能
+type ConcreteDecoratorA struct {
+	BaseDecorator
+}
+
+func (d *ConcreteDecoratorA) Operation() string {
+	if d.component != nil {
+		return "ConcreteDecoratorA(" + d.component.Operation() + ")"
+	}
+	return ""
+}
+
+// ConcreteDecoratorB 是另一个具体的装饰器，添加了不同的额外功能
+type ConcreteDecoratorB struct {
+	BaseDecorator
+}
+
+func (d *ConcreteDecoratorB) Operation() string {
+	if d.component != nil {
+		return "ConcreteDecoratorB(" + d.component.Operation() + ")"
+	}
+	return ""
+}
+
+func main() {
+	// 创建一个基础组件
+	component := &ConcreteComponent{}
+
+	// 用 ConcreteDecoratorA 装饰基础组件
+	decoratorA := &ConcreteDecoratorA{BaseDecorator{component}}
+	resultA := decoratorA.Operation()
+	fmt.Println(resultA)
+
+	// 用 ConcreteDecoratorB 装饰已经被装饰过的组件
+	decoratorB := &ConcreteDecoratorB{BaseDecorator{decoratorA}}
+	resultB := decoratorB.Operation()
+	fmt.Println(resultB)
+}
+```
+
+这个例子中，`ConcreteComponent` 是基础组件，`ConcreteDecoratorA` 和 `ConcreteDecoratorB` 是两个具体的装饰器，它们分别添加了不同的额外功能。 `BaseDecorator` 是装饰器的基础结构，其中包含了一个 `Component` 实例。通过嵌套，我们可以轻松地组合多个装饰器。
+
+###### 解释
+
+1. 这里的 `Decorator` 接口嵌套了 `Component` 接口。这种方式被称为接口嵌套，允许一个接口包含另一个接口。通过这种方式，`Decorator` 接口既拥有自己的方法，也包含了 `Component` 接口的方法。这样，任何实现 `Decorator` 接口的类型都必须实现 `Component` 接口的方法。这种结构使得装饰器可以递归地嵌套在其他装饰器中，同时保持对基础组件的引用。
+2. 这里的 `BaseDecorator` 类型中有一个 `component` 字段，它的类型是 `Component` 接口而不是 `Decorator` 接口，这是因为装饰器模式中，装饰器既可以装饰具体组件，也可以装饰其他装饰器。
+
+考虑以下情况：
+
+1. 如果 `BaseDecorator` 的 `component` 字段的类型是 `Decorator` 接口，那么它只能装饰其他装饰器，而不能直接装饰具体组件。这样的话，如果你希望装饰一个具体组件，就需要另外创建一个特定的装饰器类型，而不是直接使用 `BaseDecorator`。
+2. 如果 `BaseDecorator` 的 `component` 字段的类型是 `Component` 接口，那么它可以装饰任何实现了 `Component` 接口的具体组件，也可以装饰其他装饰器。这样，一个装饰器可以作为另一个装饰器的基础，同时它也能装饰一个具体组件。
+
+这种设计使得装饰器模式更加灵活，能够透明地嵌套多个装饰器，并且可以轻松地扩展系统功能。
+
+##### 代码3
+
+```go
+type Cache interface {
+	Get(key string) (string, error)
+}
+
+// 已有的，不是线程安全的
+type memoryMap struct {
+	// 如果你这样添加锁，那么就是一种侵入式的写法，
+	// 那么你就需要测试这个类
+	// 而且有些时候，这个是第三方的依赖，你都改不了
+	// lock sync.RWMutex
+	m map[string]string
+}
+func (m *memoryMap) Get(key string) (string, error) {
+	return m.m[key], nil
+}
+
+// SafeCache 我要改造为线程安全的
+// 无侵入式地改造
+type SafeCache struct {
+	Cache
+	lock sync.RWMutex
+}
+
+func (s *SafeCache) Get(key string) (string, error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return s.Cache.Get(key)
+}
+
+
+```
+
+#### 适配器
+
+新老代码兼容
+
+这段代码涉及到适配器模式的概念，主要是为了使 `Cache` 接口能够适配 `OtherCache` 接口的使用。
+
+1. `Cache` 接口定义了一个简单的缓存接口，其中包括 `Get` 方法用于获取缓存中的值。
+2. `OtherCache` 接口是另一个缓存接口，但是它的 `GetValue` 方法与 `Cache` 接口中的 `Get` 方法的签名不同。
+3. `CacheAdapter` 结构体实现了 `OtherCache` 接口，它嵌套了 `Cache` 接口，实际上通过组合的方式将 `Cache` 转化成了 `OtherCache`。
+4. `GetValue` 方法实际上调用了嵌套的 `Cache` 接口的 `Get` 方法，这样就实现了 `OtherCache` 接口，同时保持了 `Cache` 接口的实现。
+
+这种设计模式适用于以下情况：
+
+- 当我们有一个已经存在的接口（这里是 `Cache`），但是我们需要适配一个新的接口（这里是 `OtherCache`）时，可以使用适配器模式。
+- 适配器模式允许我们在不修改现有代码的情况下，使用一个已有的接口适应另一个接口。
+
+总的来说，这个适配器模式的例子展示了如何通过适配器模式使得两个接口能够协同工作，即使它们的方法签名不同。
+
+```go
+type Cache interface {
+	Get(key string) (string, error)
+}
+
+type OtherCache interface {
+	GetValue(ctx context.Context, key string) (any, error)
+}
+
+// CacheAdapter 适配器强调的是不同接口之间进行适配
+// 装饰器强调的是添加额外的功能
+type CacheAdapter struct {
+	Cache
+}
+
+func (c *CacheAdapter) GetValue(ctx context.Context, key string) (any, error) {
+	return c.Cache.Get(key)
+}
+```
+
+方法签名：方法的签名是指方法的名称、参数列表和返回值类型的组合。在Go中，方法的签名由这三个部分组成。例如，对于函数 `func Add(a, b int) int`，其签名为 `Add(int, int) int`。
+
+适配器模式的目的就是让一个接口的方法签名适应另一个接口的方法签名，使得它们可以一起工作，而无需修改原有的代码。
 
 #### 结构体类型与接口类型
 
