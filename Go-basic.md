@@ -1177,19 +1177,10 @@ func (u User) ChangeName(name string) {
 	u.Name = name
 }
 
-//func ChangeName(u User, name string) {
-//
-//}
-
 func (u *User) ChangeAge(age int) {
 	fmt.Printf("change age 中 u 的地址 %p \n", u)
 	u.Age = age
 }
-
-//
-//func ChangeAge(u *User, age int) {
-//
-//}
 
 func ChangeUser() {
 	u1 := User{Name: "Tom", Age: 18}
@@ -1208,6 +1199,15 @@ func ChangeUser() {
 	up1.ChangeAge(35)
 	fmt.Printf("%+v", up1)
 }
+// result
+u1 的地址 0xc00009a0c0 
+change age 中 u 的地址 0xc00009a0c0 
+change name 中 u 的地址 0xc00009a0f0 
+{Name:Tom FirstName: Age:35} 
+up1 的地址 0xc00009a150 
+change name 中 u 的地址 0xc00009a180 
+change age 中 u 的地址 0xc00009a150 
+&{Name: FirstName: Age:35}Exiting.
 ```
 
 ## 接口
