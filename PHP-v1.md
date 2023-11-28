@@ -1,4 +1,5 @@
-1.google search
+## 1.google search
+
 使用特定内容，调用google查询并返回结果
 涉及的依赖：`GuzzleHttp`，`HtmlDomParser`
 
@@ -98,8 +99,11 @@ class GoogleSearch
     }
 }
 ```
-2.页面加载并获取页面内容
+
+## 2.页面加载并获取页面内容
+
 `Browsershot` 模拟谷歌浏览器进行加载
+
 ```shell
 // mac
 npm install puppeteer
@@ -110,6 +114,7 @@ npm install puppeteer --location=global
 sudo yum install -y chromium
 sudo yum -y install libXScrnSaver-1.2.2-6.1.el7.x86_64
 ```
+
 ```php
     public function getBuenovelaContentChapterAction($url = 'https://www.buenovela.com/book/31000385032-3201435')
     {
@@ -154,7 +159,9 @@ sudo yum -y install libXScrnSaver-1.2.2-6.1.el7.x86_64
         return ['read_chapter' => '', 'context' => $context_arr, 'url' => $url];
     }
 ```
-3.文件夹下所有文件
+
+## 3.文件夹下所有文件
+
 ```php
 private function getAllFiles($path)
     {
@@ -170,7 +177,8 @@ private function getAllFiles($path)
     }
 ```
 
-4.File 文件处理相关
+## 4.File 文件处理相关
+
 ```php
 <?php
 
@@ -548,7 +556,9 @@ class File
 
 ```
 
-5. Http 网络处理相关
+
+## 5.Http 网络处理相关
+
 
 ```php
 <?php
@@ -734,17 +744,3 @@ class Http
 }
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-

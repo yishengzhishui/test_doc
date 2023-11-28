@@ -354,6 +354,81 @@ map 的遍历是随机的，也就是说你遍历两遍，输出的结果都不�
 
 • 如果元素是可比较的，那么该数组也是可比较的。
 
+在 Go 语言中，以下是可比较的类型：
+
+1. **基本数据类型：**
+
+   - 整数类型（int、int8、int16、int32、int64、uint、uint8、uint16、uint32、uint64、uintptr）
+   - 浮点数类型（float32、float64）
+   - 复数类型（complex64、complex128）
+   - 布尔类型（bool）
+   - 字符串类型（string）
+2. **指针类型：**
+
+   - 所有指针类型，包括指向可比较类型的指针。
+3. **数组类型：**
+
+   - 具有可比较元素类型的数组。
+4. **结构体类型：**
+
+   - 具有可比较字段类型的结构体。
+5. **接口类型：**
+
+   - 具有可比较元素类型的接口。
+
+需要注意的是，切片、映射、通道等复合类型的可比较性取决于其元素类型。如果切片、映射或通道的元素类型是可比较的，那么它们本身也是可比较的。否则，它们就不是可比较的。
+
+以下是一个示例，展示了可比较和不可比较的类型：
+
+```go
+package main
+
+import "fmt"
+
+type NotComparable struct {
+    Field map[string]int // 不可比较的字段类型
+}
+
+func main() {
+    // 可比较的类型
+    var a int = 10
+    var b int = 10
+
+    fmt.Println("整数比较：", a == b) // 输出：true
+
+    var str1 string = "hello"
+    var str2 string = "hello"
+
+    fmt.Println("字符串比较：", str1 == str2) // 输出：true
+
+    type Point struct {
+        X, Y int
+    }
+
+    var point1 = Point{1, 2}
+    var point2 = Point{1, 2}
+
+    fmt.Println("结构体比较：", point1 == point2) // 输出：true
+
+    // 不可比较的类型
+    var slice1 = []int{1, 2, 3}
+    var slice2 = []int{1, 2, 3}
+
+    // 编译错误：slices are not comparable
+    // fmt.Println("切片比较：", slice1 == slice2)
+
+    var notComp1 = NotComparable{Field: map[string]int{"a": 1}}
+    var notComp2 = NotComparable{Field: map[string]int{"a": 1}}
+
+    // 编译错误：type containing map[string]int is not comparable
+    // fmt.Println("结构体比较：", notComp1 == notComp2)
+}
+```
+
+在上面的示例中，整数、字符串、结构体都是可比较的，而切片和结构体 `NotComparable` 中包含不可比较的字段类型，因此它们本身不可比较。
+
+希望这能够帮助你理解在 Go 中哪些类型是可比较的。如果有其他问题，请随时提问。
+
 ### 结构体
 
 #### 结构体初始化-Go 没有构造函数
@@ -364,3 +439,186 @@ map 的遍历是随机的，也就是说你遍历两遍，输出的结果都不�
 new 可以理解为 Go 会为你的变量分配内存，并且把内存都置为0
 
 如果声明了一个指针，但是没有赋值，那么是nil
+
+### 衍生类型 （类型别名赋值）
+
+基本语法:`type TypeA TypeB`
+
+**衍生类型是一个全新的类型**，TypeB 实现了某个接口，不等于 TypeA 也实现了某个接口。
+
+衍生类型可以互相转换，使用 () 进行转换。
+
+### 类型别名(一般用作向后兼容)
+
+`type TypeA=TypeB`，这个时候 TypeA和TypeB共享方法了
+
+```go
+package main
+
+type Integer int
+
+func UseInt() {
+	i1 := 10
+	i2 := Integer(i1)
+	var i3 Integer = 11
+	println(i2, i3)
+}
+
+type Fish struct {
+	Name string
+}
+
+func (f Fish) Swim() {
+	println("fist 在游")
+}
+
+type FakeFish Fish
+
+func UseFish() {
+	f1 := Fish{}
+	f2 := FakeFish(f1)
+	//f2.Swim()
+	f2.Name = "Tom"
+	println(f1.Name)
+	var y Yu
+	y.Name = "yu"
+	y.Swim()
+}
+
+// 向后兼容
+type Yu = Fish
+
+```
+
+#### `type TypeA TypeB` 和 `type TypeA = TypeB`区别
+
+`type TypeA TypeB` 和 `type TypeA = TypeB` 这两者在 Go 语言中有着不同的含义和效果。
+
+1. **`type TypeA TypeB`：** 这种形式创建了一个新的类型 `TypeA`，它和现有类型 `TypeB` 具有相同的底层类型，但它们是不同的类型。这意味着 `TypeA` 和 `TypeB` 是两个不同的类型，它们之间不共享方法集合，也不可以直接进行赋值。
+
+   ```go
+   type TypeB struct {
+       Value int
+   }
+
+   type TypeA TypeB
+
+   func main() {
+       var a TypeA
+       var b TypeB
+
+       // 编译错误，TypeA 和 TypeB 是不同的类型
+       a = b
+   }
+   ```
+2. **`type TypeA = TypeB`：** 这种形式创建了一个类型别名 `TypeA`，它和现有类型 `TypeB` 具有相同的底层类型。类型别名引入了一个新的名称，但在类型系统中它们被视为相同的类型。它们共享相同的方法集合，可以直接进行赋值。
+
+   ```go
+   type TypeB struct {
+       Value int
+   }
+
+   type TypeA = TypeB
+
+   func main() {
+       var a TypeA
+       var b TypeB
+
+       // 可以直接赋值，TypeA 和 TypeB 是相同的类型
+       a = b
+   }
+   ```
+
+总的来说，`type TypeA TypeB` 创建了两个不同的类型，而 `type TypeA = TypeB` 创建了一个类型别名，它们在类型系统中被视为相同的类型。通常，类型别名更常用于提高代码的可读性，而不是引入新的类型。
+
+### 组合
+
+组合可以是以下几种情况:
+
+* 接口组合接口
+* 结构体组合结构体
+* 结构体组合结构体指针（不推荐）
+* 结构体组合接口
+
+组合特性：
+
+* 当A组合了B之后:1、可以直接在A上调用B的方法。2、B实现的所有接口，都认为A已经实现了。
+* A组合B之后，在初始化A的时候将B看做普通字段来初始化。
+* 组合不是继承，没有多态
+
+
+### 泛型
+
+#### 泛型约束
+
+
+泛型约束（generic constraints）是指在泛型编程中对类型参数施加的一系列条件或限制，以确保泛型代码在编译时和运行时的安全性和正确性。
+
+在泛型中，类型参数可能代表任意类型，但有时候需要对这些类型进行限制，以满足特定的需求或确保代码的正确性。泛型约束可以通过接口、基本类型、方法等方式来定义。
+
+以下是一些常见的泛型约束示例：
+
+1. **接口约束：** 通过指定类型参数必须实现某个接口，以确保类型参数具有特定的行为。
+
+   ```go
+   // 泛型函数，要求 T 必须实现 Stringer 接口
+   func Print[T Stringer](value T) {
+       fmt.Println(value.String())
+   }
+   ```
+2. **基本类型约束：** 通过指定类型参数必须是某种基本类型，例如数字类型。
+
+   ```go
+   // 泛型函数，要求 T 必须是数字类型
+   func Sum[T Numeric](a, b T) T {
+       return a + b
+   }
+   ```
+3. **方法约束：** 通过指定类型参数必须具有某个方法，以确保类型参数支持特定的操作。
+
+   ```go
+   // 泛型函数，要求 T 必须有 Add 方法
+   func Addable[T Adder](a, b T) T {
+       return a.Add(b)
+   }
+   ```
+
+这些约束有助于在泛型代码中使用更多类型的同时，保证了代码的安全性和正确性。如果类型参数不满足约束，编译器将在编译时发出错误。
+
+##### 例子：
+
+```go
+type Number interface {
+	~int | int64 | float64 | float32 | int32 | byte
+}
+```
+
+这段代码定义了一个泛型约束，其中 `Number` 是一个接口，它约束了类型参数必须是 `int`、`int64`、`float64`、`float32`、`int32` 或 `byte` 中的一种。
+
+具体来说，这个泛型约束使用了泛型的类型约束表达式（type constraint expression），其中 `~int | int64 | float64 | float32 | int32 | byte` 表示类型参数必须是这个集合中的一种。这样定义的 `Number` 接口在编写泛型函数时，可以接受满足这些类型的参数。
+
+下面是一个使用这个泛型约束的泛型函数的示例：
+
+```go
+package main
+
+import "fmt"
+
+type Number interface {
+    ~int | int64 | float64 | float32 | int32 | byte
+}
+
+// 泛型函数，约束类型参数必须是 Number 接口中定义的类型之一
+func PrintNumber[T Number](value T) {
+    fmt.Println(value)
+}
+
+func main() {
+    // 使用泛型函数
+    PrintNumber(42)      // 合法
+    PrintNumber(3.14)    // 合法
+    PrintNumber("hello") // 编译错误，不满足 Number 约束
+}
+```
+
+在这个示例中，`PrintNumber` 泛型函数接受一个类型参数 `T`，而 `T` 必须符合 `Number` 接口定义的类型约束。通过这样的约束，我们可以确保泛型函数只能处理特定类型的参数，提高了代码的类型安全性
