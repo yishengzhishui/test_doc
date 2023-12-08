@@ -546,11 +546,9 @@ type Yu = Fish
 * A组合B之后，在初始化A的时候将B看做普通字段来初始化。
 * 组合不是继承，没有多态
 
-
 ### 泛型
 
 #### 泛型约束
-
 
 泛型约束（generic constraints）是指在泛型编程中对类型参数施加的一系列条件或限制，以确保泛型代码在编译时和运行时的安全性和正确性。
 
@@ -622,3 +620,91 @@ func main() {
 ```
 
 在这个示例中，`PrintNumber` 泛型函数接受一个类型参数 `T`，而 `T` 必须符合 `Number` 接口定义的类型约束。通过这样的约束，我们可以确保泛型函数只能处理特定类型的参数，提高了代码的类型安全性
+
+
+## Gin 入门
+
+Gin中，用Engine来监听一个端口，就是逻辑上的服务器
+
+一个go进程可以创建多个Engine。
+
+在Gin里面,一个Web服务器被抽象成为Engine。
+
+可以在一个应用中创建多个engine实例，监听不同的端口。
+
+Engine承担了路由注册，接入middleware的核心职责。
+
+Engine组合来RouterGroup，RouterGroup再是实现路由功能的核心组件。
+
+gin.Context是Gin的核心类型，字面意思就是上下文，核心职责：处理请求，返回响应
+
+### 路由
+
+```go
+func main() {
+	server := gin.Default()
+	// 当一个 HTTP 请求，用 GET 方法访问的时候，如果访问路径是 /hello，
+	server.GET("/hello", func(c *gin.Context) {
+		// 就执行这段代码
+		c.String(http.StatusOK, "hello, go")
+	})
+
+	server.POST("/post", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "hello, post 方法")
+	})
+//参数路由
+	server.GET("/users/:name", func(ctx *gin.Context) {
+		name := ctx.Param("name")
+		ctx.String(http.StatusOK, "hello, 这是参数路由"+name)
+	})
+//通配符路由
+	server.GET("/views/*.html", func(ctx *gin.Context) {
+		page := ctx.Param(".html")
+		ctx.String(http.StatusOK, "hello, 这是通配符路由"+page)
+	})
+//查询参数 /order?id=123
+	server.GET("/order", func(ctx *gin.Context) {
+		oid := ctx.Query("id")
+		ctx.String(http.StatusOK, "hello, 这是查询参数"+oid)
+	})
+//这个是可以的
+	//server.GET("/items/", func(ctx *gin.Context) {
+	//	ctx.String(http.StatusOK, "hello, 这是 items")
+	//})
+
+	server.GET("/items/*abc", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "hello, 这是 items")
+	})
+// 错误示例
+	//server.GET("/users/*/", func(context *gin.Context) {
+	//
+	//})
+
+	server.Run(":8080") // 监听并在 0.0.0.0:8080 上启动服务
+}
+```
+
+
+
+![image.png](./assets/1702032234775-image.png)
+
+路由可以集中注册也可以分散注册（就是在对应model中注册，注册在handler方法中）
+
+集中注册可以看到全部路由，分散注册可以比较有条理。
+
+### 明确表示一个类型实现了某个接口(检查用)
+
+#### `var _ handler = &UserHandler{}`
+
+这行代码会在编译时检查 `UserHandler` 类型是否实现了 `handler` 接口的所有方法。如果没有实现，编译器会报错。这样可以帮助开发者及早发现潜在的问题。
+
+在 Go 中，如果一个类型实现了接口的所有方法，它就被认为是实现了该接口。为了明确表示一个类型实现了某个接口，可以使用 `var _ 接口类型 = 具体实例` 的方式，编译器会检查是否符合接口的要求。
+
+#### `var _ handler = (*UserHandler)(nil)`
+
+`(*UserHandler)(nil)` 表示一个空指针，而 `var _ handler` 表示声明了一个变量，并将这个空指针赋值给该变量，同时表明 `UserHandler` 类型实现了 `handler` 接口。
+
+这样的代码通常用于确保类型在编译时符合接口，但实际上不需要在代码中使用这个具体的实例。这种写法对于接口实现的一致性检查很有用，可以帮助开发者发现潜在的问题。
+
+
+###
