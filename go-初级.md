@@ -1,8 +1,4 @@
-## | col1 | col2 | col3 |
-
-| --- | --- | --- |
-|  |  |  |
-|  |  |  |基础
+## 基础
 
 ### 项目调试运行异常，可能是IDE文件识别异常，重新下载就行了
 
@@ -770,7 +766,6 @@ regexp "github.com/dlclark/regexp2"
 
 ![image.png](./assets/1702211250970-image.png)
 
-
 ##### gin中使用middlwware解决CORS问题
 
 [github gin cors](https://github.com/gin-contrib/cors)
@@ -783,20 +778,11 @@ regexp "github.com/dlclark/regexp2"
 
 ![image.png](./assets/1702219069527-image.png)
 
-
 ##### 要点
 
 ![image.png](./assets/1702219408109-image.png)
 
-
 ### 数据库 GORM
-
-
-| col1 | col2 | col3 |
-| ------ | ------ | ------ |
-|      |      |      |
-|      |      |      |
-
 [文档](https://gorm.io/zh_CN/docs/)
 
 #### 快速入门
