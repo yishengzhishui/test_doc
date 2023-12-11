@@ -1,4 +1,8 @@
-## 基础
+## | col1 | col2 | col3 |
+
+| --- | --- | --- |
+|  |  |  |
+|  |  |  |基础
 
 ### 项目调试运行异常，可能是IDE文件识别异常，重新下载就行了
 
@@ -621,7 +625,6 @@ func main() {
 
 在这个示例中，`PrintNumber` 泛型函数接受一个类型参数 `T`，而 `T` 必须符合 `Number` 接口定义的类型约束。通过这样的约束，我们可以确保泛型函数只能处理特定类型的参数，提高了代码的类型安全性
 
-
 ## Gin 入门
 
 Gin中，用Engine来监听一个端口，就是逻辑上的服务器
@@ -684,13 +687,26 @@ func main() {
 }
 ```
 
-
-
 ![image.png](./assets/1702032234775-image.png)
 
 路由可以集中注册也可以分散注册（就是在对应model中注册，注册在handler方法中）
 
 集中注册可以看到全部路由，分散注册可以比较有条理。
+
+#### 分组路由
+
+```go
+func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
+	ug := server.Group("/users")
+	ug.POST("/signup", u.SignUp)
+	ug.POST("/login", u.Login)
+}
+
+func (u *UserHandler) RegisterRoutes(server *gin.Engine) {
+	server.POST("/users/signup", u.SignUp)
+	server.POST("/users/login", u.Login)
+}
+```
 
 ### 明确表示一个类型实现了某个接口(检查用)
 
@@ -706,5 +722,140 @@ func main() {
 
 这样的代码通常用于确保类型在编译时符合接口，但实际上不需要在代码中使用这个具体的实例。这种写法对于接口实现的一致性检查很有用，可以帮助开发者发现潜在的问题。
 
+### Context
 
-###
+#### Bind
+
+Bind方法是根据Content-Type 来决定如何处理数据的(多为application/json)
+
+```go
+func createUser(c *gin.Context) {
+  var user User
+  if err := c.Bind(&user); err != nil {
+    c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+    return
+  }
+
+  // 在这里可以使用绑定后的 user 对象进行处理
+  // ...
+
+  c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
+}
+
+```
+
+在这个例子中，`c.Bind(&user)` 会将请求体中的数据绑定到 `user` 对象中，然后可以在处理函数中使用该对象进行后续的逻辑处理。如果绑定失败，会返回相应的错误信息。
+
+#### 正则表达式
+
+默认的 regex对于高级特性支持优先，建议替换
+
+```
+regexp "github.com/dlclark/regexp2"
+````
+
+![image.png](./assets/1702189571783-image.png)~~~~
+
+#### 跨域请求
+
+前后端分离的时候：协议、域名和端口任意一个不同都是跨域请求。
+
+前端localhost:3000 到后端 localhost:8080
+
+解决思路：
+
+告诉浏览器后端localhost:8080端口可以接收前端localhost:3000的请求
+
+浏览器的`preflight`请求机制，在preflight请求中告诉浏览器，允许接收localhost:3000的请求。
+
+![image.png](./assets/1702211250970-image.png)
+
+
+##### gin中使用middlwware解决CORS问题
+
+[github gin cors](https://github.com/gin-contrib/cors)
+
+##### middleware 在Gin中的使用
+
+![image.png](./assets/1702211975386-image.png)
+
+使用例子：
+
+![image.png](./assets/1702219069527-image.png)
+
+
+##### 要点
+
+![image.png](./assets/1702219408109-image.png)
+
+
+### 数据库 GORM
+
+
+| col1 | col2 | col3 |
+| ------ | ------ | ------ |
+|      |      |      |
+|      |      |      |
+
+[文档](https://gorm.io/zh_CN/docs/)
+
+#### 快速入门
+
+安装
+
+```shell
+go get -u gorm.io/gorm
+go get -u gorm.io/driver/sqlite
+```
+
+例子：
+
+```go
+package main
+
+import (
+  "gorm.io/gorm"
+  "gorm.io/driver/sqlite"
+)
+
+type Product struct {
+  gorm.Model
+  Code  string
+  Price uint
+}
+
+func main() {
+  db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+  if err != nil {
+    panic("failed to connect database")
+  }
+
+  // 迁移 schema
+  db.AutoMigrate(&Product{})
+
+  // Create
+  db.Create(&Product{Code: "D42", Price: 100})
+
+  // Read
+  var product Product
+  db.First(&product, 1) // 根据整型主键查找
+  db.First(&product, "code = ?", "D42") // 查找 code 字段值为 D42 的记录
+
+  // Update - 将 product 的 price 更新为 200
+  db.Model(&product).Update("Price", 200)
+  // Update - 更新多个字段
+  db.Model(&product).Updates(Product{Price: 200, Code: "F42"}) // 仅更新非零值字段
+  db.Model(&product).Updates(map[string]interface{}{"Price": 200, "Code": "F42"})
+
+  // Delete - 删除 product
+  db.Delete(&product, 1)
+}
+```
+
+#### 相关结构
+
+![image.png](./assets/1702274115458-image.png)
+
+如何理解 service-repository-domain
+
+![image.png](./assets/1702274747847-image.png)
