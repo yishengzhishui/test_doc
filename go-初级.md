@@ -783,6 +783,7 @@ regexp "github.com/dlclark/regexp2"
 ![image.png](./assets/1702219408109-image.png)
 
 ### 数据库 GORM
+
 [文档](https://gorm.io/zh_CN/docs/)
 
 #### 快速入门
@@ -845,3 +846,22 @@ func main() {
 如何理解 service-repository-domain
 
 ![image.png](./assets/1702274747847-image.png)
+
+
+#### Dcoker
+
+使用brew install，下载官网的desktop可能存在问题，termainl连接异常
+
+```shell
+brew install --cask docker
+```
+
+启动docker-compose.yaml
+
+```shell
+创建一个 docker-compose.yml 文件，定义应用程序的服务、网络和卷。
+
+运行 docker-compose up 命令，启动应用程序。
+
+在需要时使用 docker-compose down 命令停止和移除应用程序。
+```
