@@ -841,12 +841,17 @@ func main() {
 
 #### 相关结构
 
+##### 层级关系
+
+![image.png](./assets/1702303294886-image.png)
+
 ![image.png](./assets/1702274115458-image.png)
 
 如何理解 service-repository-domain
 
 ![image.png](./assets/1702274747847-image.png)
 
+![image.png](./assets/1702285413081-image.png)
 
 #### Dcoker
 
@@ -865,3 +870,102 @@ brew install --cask docker
 
 在需要时使用 docker-compose down 命令停止和移除应用程序。
 ```
+
+### 加密
+
+![image.png](./assets/1702289876296-image.png)
+
+#### 如何加密
+
+![image.png](./assets/1702289898681-image.png)
+
+#### 推荐-BCrypt
+
+![image.png](./assets/1702290120847-image.png)
+
+
+#### 邮件冲突-唯一索引冲突错误
+
+![image.png](./assets/1702301704946-image.png)
+
+#### 错误传导
+
+![image.png](./assets/1702303224457-image.png)
+
+
+#### 登录接口
+
+![image.png](./assets/1702304702357-image.png)
+
+
+#### cookie and session
+
+![image.png](./assets/1702305989616-image.png)
+
+
+![image.png](./assets/1702306092859-image.png)
+
+
+##### sess_id
+
+![image.png](./assets/1702306258483-image.png)
+
+#### session插件
+
+![image.png](./assets/1702306474973-image.png)
+
+
+##### 登录校验
+
+1. 首先引入 cookie和session
+
+   ```go
+   store := cookie.NewStore([]byte("secret"))
+   	server.Use(sessions.Sessions("mysession", store))
+   ```
+2. 登录成功 设置session
+
+![image.png](./assets/1702309091474-image.png)
+
+3. 实现一个middleware
+
+   ```go
+   type LoginMiddlewareBuilder struct {
+   	paths []string
+   }
+
+   func NewLoginMiddlewareBuilder() *LoginMiddlewareBuilder {
+   	return &LoginMiddlewareBuilder{}
+   }
+
+   func (l *LoginMiddlewareBuilder) Build() gin.HandlerFunc {
+   	return func(ctx *gin.Context) {
+   		// 不需要登录校验的
+   		for _, path := range l.paths {
+   			if ctx.Request.URL.Path == path {
+   				return
+   			}
+   		}
+   		// 不需要登录校验的
+   		//if ctx.Request.URL.Path == "/users/login" ||
+   		//	ctx.Request.URL.Path == "/users/signup" {
+   		//	return
+   		//}
+   		sess := sessions.Default(ctx)
+   		id := sess.Get("userId")
+   		if id == nil {
+   			// 没有登录
+   			ctx.AbortWithStatus(http.StatusUnauthorized)
+   			return
+   		}
+   	}
+   }
+   ```
+
+   最后就是一起调用:
+
+```go
+server.Use(middleware.NewLoginMiddlewareBuilder().Build())
+```
+
+![image.png](./assets/1702309385721-image.png)
