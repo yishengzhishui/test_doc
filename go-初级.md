@@ -983,7 +983,6 @@ server.Use(middleware.NewLoginMiddlewareBuilder().Build())
 
 ![image.png](./assets/1702309385721-image.png)
 
-
 ### session 优化
 
 ![image.png](./assets/1702365940205-image.png)
@@ -991,7 +990,6 @@ server.Use(middleware.NewLoginMiddlewareBuilder().Build())
 ##### 优先选择 redis实现
 
 ![image.png](./assets/1702366095057-image.png)
-
 
 ![image.png](./assets/1702369873062-image.png)
 
@@ -1019,20 +1017,17 @@ sess := sessions.Default(ctx)
 	sess.Save()
 ```
 
-
 ### JWT
 
 #### 简介
 
 ![image.png](./assets/1702377277300-image.png)
 
-
 JWT 主要由三部分组成：
 
 1. **Header（头部）:** 包含了描述关于该JWT的最基本的信息，例如其类型（JWT）和使用的签名算法。
 2. **Payload（负载）:** 包含了要传递的信息。Payload 可以包含一些标准的声明（例如 issuer、expiration time、subject 等），也可以包含自定义的声明。
 3. **Signature（签名）:** 使用指定的算法和秘密密钥对 Header 和 Payload 进行签名。签名用于验证消息的发送者以及确保消息在传递的过程中没有被篡改。
-
 
 JWT 的主要优势包括：
 
@@ -1046,3 +1041,8 @@ JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户�
 #### 使用
 
 ![image.png](./assets/1702377243330-image.png)
+
+
+#### 步骤总结
+
+![image.png](./assets/1702394831346-image.png)
