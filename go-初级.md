@@ -853,6 +853,23 @@ func main() {
 
 ![image.png](./assets/1702285413081-image.png)
 
+##### 层级关系总结：
+
+handler在最上层，可以调用service的方法，service则调用repository的方法，一般情况下不跨层调用。
+
+service代表的是一个业务的完整功能或者是完整的处理流程，包含了主要的业务逻辑
+
+repository一般代表数据存储（数据存储的抽象），但不是代表数据库
+
+Dao代表的是数据库存储操作
+
+domain一般认为是业务在系统中的反应，可以直接理解为一个业务对象。类似model，但是不是数据库使用的model，而是业务逻辑中使用的，和数据的存在一些差别(正常service， handler中使用的对象都是domain的)
+
+##### 基本逻辑流程
+
+1. main 函数中初始化 DB，WEB server（主要是middleware例如cors，session）,以及相关的业务逻辑层级（handler，service，repository，dao），还有注册路由（hanlder中的方法）
+2. 随后就是在各层级中创建所需要的方法。
+
 #### Dcoker
 
 使用brew install，下载官网的desktop可能存在问题，termainl连接异常
@@ -883,7 +900,6 @@ brew install --cask docker
 
 ![image.png](./assets/1702290120847-image.png)
 
-
 #### 邮件冲突-唯一索引冲突错误
 
 ![image.png](./assets/1702301704946-image.png)
@@ -892,19 +908,15 @@ brew install --cask docker
 
 ![image.png](./assets/1702303224457-image.png)
 
-
 #### 登录接口
 
 ![image.png](./assets/1702304702357-image.png)
-
 
 #### cookie and session
 
 ![image.png](./assets/1702305989616-image.png)
 
-
 ![image.png](./assets/1702306092859-image.png)
-
 
 ##### sess_id
 
@@ -913,7 +925,6 @@ brew install --cask docker
 #### session插件
 
 ![image.png](./assets/1702306474973-image.png)
-
 
 ##### 登录校验
 
