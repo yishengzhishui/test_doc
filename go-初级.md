@@ -992,6 +992,9 @@ server.Use(middleware.NewLoginMiddlewareBuilder().Build())
 
 ![image.png](./assets/1702366095057-image.png)
 
+
+![image.png](./assets/1702369873062-image.png)
+
 ##### docker-composer redis
 
 本机有redis，docker安装的redis映射一下端口到16379，使用redis-cli访问
@@ -999,3 +1002,47 @@ server.Use(middleware.NewLoginMiddlewareBuilder().Build())
 ```shell
 redis-cli -host 127.0.0.1 -p 16379
 ```
+
+##### Gin session参数可以设置
+
+```go
+sess := sessions.Default(ctx)
+	// 我可以随便设置值了
+	// 你要放在 session 里面的值
+	sess.Set("userId", user.Id)
+	sess.Options(sessions.Options{
+		Secure:   true,
+		HttpOnly: true,
+		// 一分钟过期
+		MaxAge: 60,
+	})
+	sess.Save()
+```
+
+
+### JWT
+
+#### 简介
+
+![image.png](./assets/1702377277300-image.png)
+
+
+JWT 主要由三部分组成：
+
+1. **Header（头部）:** 包含了描述关于该JWT的最基本的信息，例如其类型（JWT）和使用的签名算法。
+2. **Payload（负载）:** 包含了要传递的信息。Payload 可以包含一些标准的声明（例如 issuer、expiration time、subject 等），也可以包含自定义的声明。
+3. **Signature（签名）:** 使用指定的算法和秘密密钥对 Header 和 Payload 进行签名。签名用于验证消息的发送者以及确保消息在传递的过程中没有被篡改。
+
+
+JWT 的主要优势包括：
+
+* **自包含性：** JWT 包含了所有必要的信息，因此接收方无需再去查询服务器来验证令牌。
+* **紧凑性：** JWT 是紧凑的，适用于在 URL、POST 参数、HTTP 头部等各种环境中传递。
+* **可扩展性：** 可以通过添加自定义声明扩展 JWT 的功能。
+* **安全性：** 通过签名可以验证 JWT 的真实性和完整性。
+
+JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户登录成功后，服务器可以生成一个包含用户信息的 JWT，并将其返回给客户端。客户端在后续请求中可以携带这个 JWT，服务器通过验证 JWT 的签名来确认用户身份，并在需要时提取用户信息。
+
+#### 使用
+
+![image.png](./assets/1702377243330-image.png)
