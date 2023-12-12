@@ -623,6 +623,8 @@ func main() {
 
 ## Gin 入门
 
+![image.png](./assets/1702363877523-image.png)
+
 Gin中，用Engine来监听一个端口，就是逻辑上的服务器
 
 一个go进程可以创建多个Engine。
@@ -980,3 +982,20 @@ server.Use(middleware.NewLoginMiddlewareBuilder().Build())
 ```
 
 ![image.png](./assets/1702309385721-image.png)
+
+
+### session 优化
+
+![image.png](./assets/1702365940205-image.png)
+
+##### 优先选择 redis实现
+
+![image.png](./assets/1702366095057-image.png)
+
+##### docker-composer redis
+
+本机有redis，docker安装的redis映射一下端口到16379，使用redis-cli访问
+
+```shell
+redis-cli -host 127.0.0.1 -p 16379
+```
