@@ -197,7 +197,6 @@ docker run -d --rm nginx:alpine    # 默认使用桥接模式
 docker run -d -p 8080:80 nginx:alpine #把主机的端口号映射到容器的内部端口号，解决了潜在的端口冲突问题。
 ```
 
-
 ## docker build
 
 `docker build` 是 Docker 中用于构建镜像的命令。通过执行 `docker build` 命令，你可以根据 Dockerfile 文件创建一个新的 Docker 镜像。
@@ -287,7 +286,6 @@ CMD ["python3", "app.py"]
 
 ### run 太长容易写错
 
-
 ```shell
 // 第一条指令必须是 FROM
 FROM alpine:3.15                # 选择Alpine镜像 镜像的安全和大小
@@ -367,7 +365,6 @@ CMD echo "My environment variable value: $MY_ENV"
 4. docker build 需要指定“构建上下文”，其中的文件会打包上传到 Docker daemon，所以尽量不要在“构建上下文”中存放多余的文件。
 5. 创建镜像的时候应当尽量使用 -t 参数，为镜像起一个有意义的名字，方便管理。
 
-
 # 搭建kubernetes 多集群部署
 
 准备两个机器（虚拟机建两个）-
@@ -408,3 +405,32 @@ kubectl get node
 kubectl run ngx --image=nginx:alpine
 kubectl get pod -o wide
 ```
+
+
+## 遇到的问题
+
+### 虚拟机重启后，可能因为两张网卡的问题无法启动pod
+
+解决逻辑：
+
+1.在 `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf`
+文件中添加如下代码 `Environment="KUBELET_EXTRA_ARGS=--node-ip=xxx.xxx.xxx.xxx" `，其中 xxx 就是你虚拟机分配的 IP
+地址。修改完成后使用 `sudo systemctl daemon-reload`和`sudo systemctl restart kubelet.service` 重启 kubelet。
+
+2.kube-flannel.yml 文件中加入 --iface=enp0s8，位置如下
+
+```yaml
+containers:
+
+  - name: kube-flannel
+    image: xxx
+    command:
+      - /opt/bin/flanneld
+        args:
+      - --ip-masq
+      - --kube-subnet-mgr
+      - --iface=enp0s8 # 这里新增这条,这个就是虚拟机指定分配的哪个，可以通过ip addr show 查询
+```
+
+- 重装flannel `kubectl apply -f kube-flannel.yml`
+- 重启kubelet： `systemctl restart kubelet`
