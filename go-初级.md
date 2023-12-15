@@ -1042,16 +1042,13 @@ JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户�
 
 ![image.png](./assets/1702377243330-image.png)
 
-
 #### 步骤总结
 
 ![image.png](./assets/1702394831346-image.png)
 
-
 #### 优点
 
 ![image.png](./assets/1702397411238-image.png)
-
 
 ### 保护系统
 
@@ -1059,11 +1056,9 @@ JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户�
 
 ![image.png](./assets/1702438061709-image.png)
 
-
 限流阈值
 
 ![image.png](./assets/1702438112134-image.png)
-
 
 ##### 限流算法要注意并发问题
 
@@ -1071,26 +1066,99 @@ JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户�
 
 ![image.png](./assets/1702438942301-image.png)
 
-
 为何使用redis实现
 
 ![image.png](./assets/1702439668681-image.png)
 
-
 ![image.png](./assets/1702444736553-image.png)
-
 
 ##### 面试要点
 
 ![image.png](./assets/1702444841166-image.png)
 
-
 ### K8S
 
-部署web服务器，需要将项目打包成镜像 
+部署web服务器，需要将项目打包成镜像
 
 ![image.png](./assets/1702446443507-image.png)
 
-##### 准备镜像
+#### 准备镜像
 
-![image.png](./assets/1702446567493-image.png)
+1. 打包可执行文件(docker 用 需要linux环境下使用)
+
+```shell
+GOOS=linux GOARCH=arm go build -o webook 
+```
+
+2. 编写Dockerfile
+
+   ```yaml
+   # 基础镜像
+   FROM ubuntu:20.04
+   # 把编译后的打包进来这个镜像，放到工作目录 /app。你随便换
+   COPY webook /app/webook
+   WORKDIR /app
+   # CMD 是执行命令
+   # 最佳
+   ENTRYPOINT ["/app/webook"]
+   ```
+3. 打包镜像
+
+```shell
+docker build -t wutiao/webook:v0.0.1 . # image 名称自己定
+```
+
+
+
+4. 为了方便和后期求改 可以将上面命令打包成 make docker 命令
+
+```makefile
+.PHONY: docker
+docker:
+	@rm webook || true
+	@GOOS=linux GOARCH=arm go build -o webook .
+	@docker rmi -f wutiao/webook:v0.0.1
+	@docker build -t wutiao/webook:v0.0.1 .
+
+```
+
+#### 编写k8s相关yaml
+
+1. deployment.yaml
+2. service.yaml
+
+##### 注意
+
+```yaml
+# service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: webook-gin-svc
+spec:
+## 这里 type 选的是负载均衡
+  type: LoadBalancer
+  selector:
+    app: webook-gin-test
+  ports:
+    - protocol: TCP
+      name: http
+      port: 88
+      targetPort: 8080
+
+  
+```
+
+service的信息如下，这个时候 `http://localhost:88`是可以成功访问的，但是`http://localhost:31500`是不行的，这个是负载均衡对外主动暴露的端口
+
+![image.png](./assets/1702627477416-image.png)
+
+如果yaml文件中type 是 `NodePort`
+
+那么service信息如下：
+
+![image.png](./assets/1702627802996-image.png)
+
+我就可以通过`http://localhost:31500`访问，但是`http://localhost:88`就不行了。
+
+## NodePort 和 LoadBalance需要到虚拟机上重新实验。

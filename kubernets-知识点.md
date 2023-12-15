@@ -188,7 +188,7 @@ spec:
 2. `kind` 表示资源对象的类型，这个应该很好理解，比如 Pod、Node、Job、Service 等等。
 3. `metadata` 这个字段顾名思义，表示的是资源的一些“元信息”，也就是用来标记对象，方便 Kubernetes 管理的一些信息。
 
-使用 kubectl apply、kubectl delete，再加上参数 -f，你就可以使用这个 YAML 文件，创建或者删除对象了：
+**使用 kubectl apply、kubectl delete，再加上参数 -f，你就可以使用这个 YAML 文件，创建或者删除对象了：**
 
 ```shell
 kubectl apply -f ngx-pod.yml
@@ -1468,7 +1468,6 @@ kubectl delete -f svc.yml
 kubectl delete -f ingress.yml
 kubectl delete -f kic.yml
 ```
-
 
 ## 中级知识点脑图
 

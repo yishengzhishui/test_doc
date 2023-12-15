@@ -406,7 +406,6 @@ kubectl run ngx --image=nginx:alpine
 kubectl get pod -o wide
 ```
 
-
 ## 遇到的问题
 
 ### 虚拟机重启后，可能因为两张网卡的问题无法启动pod
