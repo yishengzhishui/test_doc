@@ -1166,6 +1166,34 @@ Service 对象的域名完全形式是**对象.名字空间.svc.cluster.local**�
 
 ![image.png](./assets/1693405159372-image.png)
 
+### type=nodeport的缺点
+
+* 第一个缺点是它的端口数量很有限。Kubernetes 为了避免端口冲突，默认只在“30000~32767”这个范围内随机分配，只有 2000 多个，而且都不是标准端口号，这对于具有大量业务应用的系统来说根本不够用。
+* 第二个缺点是它会在每个节点上都开端口，然后使用 kube-proxy 路由到真正的后端 Service，这对于有很多计算节点的大集群来说就带来了一些网络通信成本，不是特别经济。
+* 第三个缺点，它要求向外界暴露节点的 IP 地址，这在很多时候是不可行的，为了安全还需要在集群外再搭一个反向代理，增加了方案的复杂度。
+
+## port, nodePort and targetPort
+
+在 Kubernetes 的 Service 中，`port`、`nodePort` 和 `targetPort` 是与服务端口相关的不同属性。让我为你解释一下它们的含义：
+
+1. **`port`：**
+
+   - `port` 是 Service 暴露给集群内其他服务或外部用户的端口。当其他 Pod 或服务要访问这个 Service 时，它们将使用该端口。`port` 是 Service 的入口端口。
+2. **`nodePort`：**
+
+   - `nodePort` 是一种类型的端口，用于在整个集群上暴露 Service。当你设置了 `nodePort`，Kubernetes 会在每个节点上分配一个固定的端口，使得该端口上的流量可以被路由到 Service。这允许外部流量通过节点的 IP 地址和 `nodePort` 访问 Service。
+3. **`targetPort`：**
+
+   - `targetPort` 是 Service 后端 Pod 上的端口，表示 Service 将流量转发到 Pod 的哪个端口。如果你的后端 Pod 在不同的端口上提供服务，你可以通过设置 `targetPort` 来指定要将流量引导到 Pod 的哪个端口。
+
+具体来说，当有一个 Service 暴露给其他 Pod 或外部用户时：
+
+- 其他 Pod 使用该 Service 的 `port` 进行访问。
+- 外部用户可以通过节点的 IP 地址和 `nodePort` 访问该 Service。
+- `targetPort` 指定了 Service 将流量引导到后端 Pod 的哪个端口。
+
+这些参数的组合使得 Kubernetes 中的服务能够有效地处理流量，同时提供了一些配置选项以满足不同的需求。
+
 ## Ingress-七层负载-流量总入口
 
 Kubernetes（K8s）中的 Ingress 是一种 API 对象，用于管理集群中服务的外部访问。Ingress 允许你定义规则，将外部流量引导到集群内部的服务。它提供了一种灵活的方式来配置 HTTP 和 HTTPS 路由，并支持负载均衡、SSL 终止、路径基础的路由等功能

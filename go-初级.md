@@ -1076,11 +1076,11 @@ JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户�
 
 ![image.png](./assets/1702444841166-image.png)
 
-### K8S
+## K8S
+
+### 部署WEB服务器
 
 部署web服务器，需要将项目打包成镜像
-
-![image.png](./assets/1702446443507-image.png)
 
 #### 准备镜像
 
@@ -1107,8 +1107,6 @@ GOOS=linux GOARCH=arm go build -o webook
 ```shell
 docker build -t wutiao/webook:v0.0.1 . # image 名称自己定
 ```
-
-
 
 4. 为了方便和后期求改 可以将上面命令打包成 make docker 命令
 
@@ -1161,4 +1159,27 @@ service的信息如下，这个时候 `http://localhost:88`是可以成功访问
 
 我就可以通过`http://localhost:31500`访问，但是`http://localhost:88`就不行了。
 
-## NodePort 和 LoadBalance需要到虚拟机上重新实验。
+**NodePort 和 LoadBalance需要到虚拟机上重新实验。**
+
+### 部署Mysql
+
+#### 基本步骤
+
+1. 创建pv(persistentVolume)
+2. 创建pvc(persistentVolumeClaims)
+3. 创建delopment
+4. 创建service
+
+pv是实际存储器， pvc是存储器声明，如果storageClass能够匹配成功就自动绑定，pod就可以不用关系pv的具体实现。
+
+在 PersistentVolume 里面，accessMode 是说明我这个 PV 支持什么访问模式。
+
+在 PersistentVolumeClaim 里面，accessMode 是说明我这个 PVC 需要怎么访问
+
+#### 注意
+
+mysql 默认的挂载路径是`/var/lib/mysql`，但是是可以修改的
+
+### 结果，使用 type 是 NodePort 需要使用nodeport连接
+
+![image.png](./assets/1702657696431-image.png)
