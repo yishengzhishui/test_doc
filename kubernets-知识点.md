@@ -1273,7 +1273,7 @@ spec:
   controller: nginx.org/ingress-controller  #使用Nginx 开发的 Ingress Controller
 ```
 
-## ingress 和ingress class关系图
+## ingress,ingress class 和service的关系图
 
 ![image.png](./assets/1693491024705-image.png)
 
