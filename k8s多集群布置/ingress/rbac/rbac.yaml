@@ -1,13 +1,17 @@
+# 集群角色
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: nginx-ingress
+##定义了该 ClusterRole 的权限规则
 rules:
 - apiGroups:
+  # "" 表示核心API组
   - ""
   resources:
   - services
   - endpoints
+  #get 表示允许获取资源的操作，list 表示允许列出资源的操作，watch 表示允许监视资源的操作
   verbs:
   - get
   - list
@@ -106,14 +110,17 @@ rules:
     - create
     - delete
 ---
+#集群角色绑定
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: nginx-ingress
+#定义了被绑定到 ClusterRole 的主体，里是一个 ServiceAccount，名为 nginx-ingress，位于命名空间 nginx-ingress 中。
 subjects:
 - kind: ServiceAccount
   name: nginx-ingress
   namespace: nginx-ingress
+#定义了与之关联的 ClusterRole
 roleRef:
   kind: ClusterRole
   name: nginx-ingress

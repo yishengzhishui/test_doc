@@ -1329,8 +1329,8 @@ kubectl describe ing ngx-ing #查看详情
 使用Ingress Controller 前期准备 已经放在 `k8s多集群布置/ingress/setup.sh`
 
 ```shell
-kubectl apply -f common/ns-and-sa.yaml
-kubectl apply -f rbac/rbac.yaml
+kubectl apply -f common/ns-and-sa.yaml ##创建namespace 和service account
+kubectl apply -f rbac/rbac.yaml ## 配置权限账户
 kubectl apply -f common/nginx-config.yaml
 kubectl apply -f common/default-server-secret.yaml
 ```

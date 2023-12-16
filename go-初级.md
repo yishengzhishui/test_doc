@@ -1202,4 +1202,22 @@ nignx部署较为复杂，涉及到Ingress的概念
 
 1. 首先自己创建 ingress.yaml 和 ingress_class.yaml
 2. 在ingress_class.yaml 指定好ingressContrller，常用的是`spec: controller: nginx.org/ingress-controller`
-3. 这个ingress controller是nignx提供的，需要到官网上下载相应对于的配置文件。（可以参考`kubernets-知识点.md:1329`）
+3. 可以采用helm下载 nginx ingress controller，默认情况下，这个ingress class 就是nginx。当然还有其他方法：使用yaml文件。这个ingress controller是nignx提供的，需要到官网上下载相应对于的配置文件。（可以参考`kubernets-知识点.md:1329`）
+
+步骤也可以是先下载对应controller，然后自己配置ingress 和 ingress class
+
+注意：如果ingress 配置了域名，需要到`/etc/host`里面标注一下，方便解析
+
+#### Helm 安装 nginx-ingress controller
+
+```shell
+//instakk helm
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
+
+// install
+helm upgrade --install ingress-nginx ingress-nginx \
+--repo https://kubernetes.github.io/ingress-nginx \
+--namespace ingress-nginx --create-namespace
+```
