@@ -1180,6 +1180,18 @@ pv是实际存储器， pvc是存储器声明，如果storageClass能够匹配�
 
 mysql 默认的挂载路径是`/var/lib/mysql`，但是是可以修改的
 
-### 结果，使用 type 是 NodePort 需要使用nodeport连接
+#### 结果
+
+使用 type 是 NodePort的情况 需要使用nodeport进行连接
 
 ![image.png](./assets/1702657696431-image.png)
+
+
+
+
+### 部署Redis
+
+单机部署,不需要持久化存储只需要配置 service 和 deployment就可以
+
+1. deployment.yaml
+2. service.yaml
