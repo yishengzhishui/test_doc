@@ -1434,7 +1434,7 @@ kubectl get pod -n nginx-ingress
 
 为ingres-controller设置Service:
 
-```bash
+```yaml
 kubectl expose deploy nginx-kic-dep -n nginx-ingress --port=80 --target-port=80 $=out>ingress-svc.yml
 
 cat ingress-svc.yml
@@ -1442,16 +1442,15 @@ cat ingress-svc.yml
 apiVersion: v1
 kind: Service
 metadata:
-name: nginx-kic-svc
-namespace: nginx-ingress
+  name: nginx-kic-svc
+  namespace: nginx-ingress
 spec:
-ports:
-
-- port: 80
-  protocol: TCP
-  targetPort: 80
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
   selector:
-  app: nginx-kic-dep
+    app: nginx-kic-dep
   type: NodePort
 
 kubectl get svc -n nginx-ingress
