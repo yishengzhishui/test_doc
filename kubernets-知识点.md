@@ -1658,9 +1658,7 @@ kubectl get pvc
 PV 和 PVC 绑定好了，有了持久化存储，现在我们就可以为 Pod 挂载存储卷。
 
 1. 先要在 spec.volumes 定义存储卷，
-
 2. 然后在 containers.volumeMounts 挂载进容器。
-
 3. 不过因为我们用的是 PVC，所以要在 volumes 里用字段 persistentVolumeClaim 指定 PVC 的名字。
 
 ```yaml

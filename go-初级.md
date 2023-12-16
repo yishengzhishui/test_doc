@@ -1195,3 +1195,11 @@ mysql 默认的挂载路径是`/var/lib/mysql`，但是是可以修改的
 
 1. deployment.yaml
 2. service.yaml
+
+### 部署Nignx
+
+nignx部署较为复杂，涉及到Ingress的概念
+
+1. 首先自己创建 ingress.yaml 和 ingress_class.yaml
+2. 在ingress_class.yaml 指定好ingressContrller，常用的是`spec: controller: nginx.org/ingress-controller`
+3. 这个ingress controller是nignx提供的，需要到官网上下载相应对于的配置文件。（可以参考`kubernets-知识点.md:1329`）
