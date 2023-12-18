@@ -1186,9 +1186,6 @@ mysql 默认的挂载路径是`/var/lib/mysql`，但是是可以修改的
 
 ![image.png](./assets/1702657696431-image.png)
 
-
-
-
 ### 部署Redis
 
 单机部署,不需要持久化存储只需要配置 service 和 deployment就可以
@@ -1221,3 +1218,52 @@ helm upgrade --install ingress-nginx ingress-nginx \
 --repo https://kubernetes.github.io/ingress-nginx \
 --namespace ingress-nginx --create-namespace
 ```
+
+
+## 性能
+
+### wrk 压测
+
+#### 步骤
+
+1. `brew install wrk`
+2. 修改部分代码
+
+* 启用 JWT 来测试——因为比较好测试。
+
+* 修改 /users/login 对应的登录态保持时间，修改为 30 分钟。本质上是确保在你测试 profile 接口的时候，你拿到的 JWT token 没有过期。
+
+* 去除 ratelimit 限制。
+
+3. 编写压测代码（lua）
+4. 执行测试命令：
+
+```shell
+wrk -t1 -d1s -c2 -s ./scripts/wrk/signup.lua http://localhost:8080/users/signup
+```
+
+参数：
+
+* -t：后面跟着的是线程数量。
+* -d：后面跟着的是持续时间，比如说 1s 是一秒，也可以是 1m，是一分钟。
+* -c：后面跟着的是并发数。
+* -s：后面跟着的是测试的脚本
+
+### 性能优化-缓存
+
+#### 引入UserCache目的
+
+
+1. 屏蔽过期时间设置问题。也就是说，使用这个UserCache 的人不再关心过期时间的问题。
+2. 屏蔽 key 的结构。也就是调用者不用知道在缓存里面的这个 key 是怎么组成的。
+3. 屏蔽序列化与反序列协议。当结构体写入到Redis 的时候，要决定如何序列化和反序列化
+
+需要序列化是因为，结构体存入redis需要序列化的。
+
+`json.Marshal(user)`,`json.Unmarshal([]byte(data),&user)`
+
+user是结构体，data是序列化后存入redis的数据。
+
+引入缓存会有可能的问题，就是缓存失效后，如何保护数据库的问题。
+
+两种方：1、就是缓存失效直接返回错误，不去查询数据库；2、数据库加限流设置，用户本地缓存加限流（gorm的middleware）。
