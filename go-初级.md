@@ -1219,7 +1219,6 @@ helm upgrade --install ingress-nginx ingress-nginx \
 --namespace ingress-nginx --create-namespace
 ```
 
-
 ## 性能
 
 ### wrk 压测
@@ -1230,9 +1229,7 @@ helm upgrade --install ingress-nginx ingress-nginx \
 2. 修改部分代码
 
 * 启用 JWT 来测试——因为比较好测试。
-
 * 修改 /users/login 对应的登录态保持时间，修改为 30 分钟。本质上是确保在你测试 profile 接口的时候，你拿到的 JWT token 没有过期。
-
 * 去除 ratelimit 限制。
 
 3. 编写压测代码（lua）
@@ -1253,7 +1250,6 @@ wrk -t1 -d1s -c2 -s ./scripts/wrk/signup.lua http://localhost:8080/users/signup
 
 #### 引入UserCache目的
 
-
 1. 屏蔽过期时间设置问题。也就是说，使用这个UserCache 的人不再关心过期时间的问题。
 2. 屏蔽 key 的结构。也就是调用者不用知道在缓存里面的这个 key 是怎么组成的。
 3. 屏蔽序列化与反序列协议。当结构体写入到Redis 的时候，要决定如何序列化和反序列化
@@ -1267,7 +1263,6 @@ user是结构体，data是序列化后存入redis的数据。
 引入缓存会有可能的问题，就是缓存失效后，如何保护数据库的问题。
 
 两种方：1、就是缓存失效直接返回错误，不去查询数据库；2、数据库加限流设置，用户本地缓存加限流（gorm的middleware）。
-
 
 ## 短信验证码登录
 
@@ -1299,7 +1294,6 @@ user是结构体，data是序列化后存入redis的数据。
 ![image.png](./assets/1702896213386-image.png)
 
 #### 验证：
-
 
 1. 查询验证码，如果验证码不存在，说明还没发；
 2. 验证码存在，验证次数少于等于 3 次，比较输入的验证码和预期的验证码是否相等
