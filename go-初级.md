@@ -1298,3 +1298,32 @@ user是结构体，data是序列化后存入redis的数据。
 1. 查询验证码，如果验证码不存在，说明还没发；
 2. 验证码存在，验证次数少于等于 3 次，比较输入的验证码和预期的验证码是否相等
 3. 验证码存在，验证次数大于 3 次，直接返回不相等
+
+## 面向接口编程
+
+使用wire的话，返回值一般需要接口
+
+```go
+type UserDAO interface {
+	FindByEmail(ctx context.Context, email string) (User, error)
+	FindById(ctx context.Context, id int64) (User, error)
+	FindByPhone(ctx context.Context, phone string) (User, error)
+	Insert(ctx context.Context, u User) error
+}
+
+type GORMUserDAO struct {
+	db *gorm.DB
+}
+
+func NewUserDAO(db *gorm.DB) UserDAO {
+	return &GORMUserDAO{
+		db: db,
+	}
+}
+```
+
+在 Go 语言中，接口的实现不仅可以是结构体的值类型，也可以是指针类型。因此，当一个结构体类型（比如 `GORMUserDAO`）实现了一个接口（比如 `UserDAO`）的所有方法时，你**可以返回该结构体类型的指针作为接口类型的实**例。任何实现了接口中所有方法的类型都可以被赋值给该接口的变量。
+
+在这里，`NewUserDAO` 函数返回的是 `UserDAO` 接口类型，而 `GORMUserDAO` 结构体实现了 `UserDAO` 接口的所有方法。因此，你可以将 `GORMUserDAO` 的指针类型赋值给 `UserDAO` 接口类型。
+
+这种方式的好处在于，你可以通过接口来隐藏具体实现的细节，使得代码更加灵活和可维护。接口允许你在不修改调用方代码的情况下切换不同的实现，只需要保证新的实现也满足接口的定义即可。因此，返回 `GORMUserDAO` 的指针类型是 Go 中常见的一种做法，符合接口隔离原则和依赖倒置原则。
