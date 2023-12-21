@@ -1407,3 +1407,122 @@ func TestMock(t *testing.T) {
 }
 
 ```
+
+
+### mock test user signup
+
+```go
+package web
+
+import (
+	"bytes"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/yishengzhishui/tool_library/webook/internal/service"
+	svcmocks "github.com/yishengzhishui/tool_library/webook/internal/service/mocks"
+	"go.uber.org/mock/gomock"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestUserHandler_SignUp(t *testing.T) {
+	testCase := []struct {
+		name string
+
+		mock func(ctrl *gomock.Controller) service.UserService
+
+		reqBody string
+
+		wantCode int
+		wantBody string
+	}{
+		{
+			name: "注册成功",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				usersvc.EXPECT().SignUp(gomock.Any(), gomock.Any()).Return(nil)
+				// 注册成功是 return nil
+				return usersvc
+			},
+
+			reqBody: `
+{
+	"email": "123@qq.com",
+	"password": "hello#world123",
+	"confirm_password": "hello#world123"
+}
+`,
+			wantCode: http.StatusOK,
+			wantBody: "注册成功",
+		},
+		{
+			name: "两次输入密码不匹配",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				return usersvc
+			},
+
+			reqBody: `
+{
+	"email": "123@qq.com",
+	"password": "hello#world1234",
+	"confirm_password": "hello#world123"
+}
+`,
+			wantCode: http.StatusOK,
+			wantBody: "两次密码不一致",
+		},
+		{
+			name: "邮箱冲突",
+			mock: func(ctrl *gomock.Controller) service.UserService {
+				usersvc := svcmocks.NewMockUserService(ctrl)
+				usersvc.EXPECT().SignUp(gomock.Any(), gomock.Any()).Return(service.ErrUserDuplicate)
+				//这里的返回值是模拟 `webook/internal/web/user.go`中
+				// err = u.svc.SignUp(context, domain.User{Email: req.Email, Password: req.Password})
+				return usersvc
+			},
+
+			reqBody: `
+{
+	"email": "123@qq.com",
+	"password": "hello#world123",
+	"confirm_password": "hello#world123"
+}
+`,
+			wantCode: http.StatusOK,
+			wantBody: "邮箱 or phone 冲突",
+		},
+	}
+
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			server := gin.Default()
+
+			//service
+			userHandler := NewUserHandler(tc.mock(ctrl), nil)
+			userHandler.RegisterRoutes(server)
+
+			// http
+			// request
+			req, err := http.NewRequest(http.MethodPost, "/users/signup",
+				bytes.NewBuffer([]byte(tc.reqBody)))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			//response
+			resp := httptest.NewRecorder()
+
+			//这样调用，GIN会处理这个请求，并将响应写回resp
+			server.ServeHTTP(resp, req)
+			assert.Equal(t, tc.wantCode, resp.Code)
+			assert.Equal(t, tc.wantBody, resp.Body.String())
+
+		})
+	}
+}
+
+```
