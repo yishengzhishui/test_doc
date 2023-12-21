@@ -1327,3 +1327,83 @@ func NewUserDAO(db *gorm.DB) UserDAO {
 在这里，`NewUserDAO` 函数返回的是 `UserDAO` 接口类型，而 `GORMUserDAO` 结构体实现了 `UserDAO` 接口的所有方法。因此，你可以将 `GORMUserDAO` 的指针类型赋值给 `UserDAO` 接口类型。
 
 这种方式的好处在于，你可以通过接口来隐藏具体实现的细节，使得代码更加灵活和可维护。接口允许你在不修改调用方代码的情况下切换不同的实现，只需要保证新的实现也满足接口的定义即可。因此，返回 `GORMUserDAO` 的指针类型是 Go 中常见的一种做法，符合接口隔离原则和依赖倒置原则。
+
+
+## 单元测试
+
+Table Driven 模式
+
+Table Driven 的形式主要分成三个部分：
+
+1. 测试用例的定义：即每一个测试用例需要有什么。
+2. 具体的测试用例：你设计的每一个测试用例都在这里。
+3. 执行测试用例：这里面还包括了对测试结果进行断言。
+
+![image.png](./assets/1703141809166-image.png)
+
+### mock 工具
+
+1. install
+
+```shell
+go install go.uber.org/mock/mockgen@latest
+```
+
+2. 生成mock文件-(注意：通常在项目的根目录下执行)
+
+   mockgen 一般要指定三个参数：
+
+   1. source：也就是你接口所在的文件。
+   2. destination：也就是你生成代码的目标路径。
+   3. package：也就是生成代码的文件的 package。
+
+   ```shell
+   mockgen -source=
+   ./webook/internal/service/user.go -package=svcmocks - destination=
+   ./webook/internal/service/mocks/user.mock.go
+   ```
+3. 可以使用make 封装一下这些命令
+
+   ```makefile
+   .PHONY: mock
+   mock:
+   	@mockgen -source=webook/internal/service/user.go -package=svcmocks -destination=webook/internal/service/mocks/user.mock.go
+   	@mockgen -source=webook/internal/service/code.go -package=svcmocks -destination=webook/internal/service/mocks/code.mock.go
+   	@go mod tidy
+   ```
+4. 使用mock
+
+流程：
+
+1)初始化控制器，这里是 ctrl。
+
+2)创建模拟的对象，这里是 usersvc。
+
+3)设计模拟调用
+
+• 先调用 EXPECT，不要忘了。
+
+• 调用同名方法，传入模拟的条件。
+
+• 指定返回值。
+
+注意事项：你设计了几个模拟调用，在使用的时候就都要用上，而且顺序也要对上。
+
+例子：
+
+```go
+func TestMock(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	usersvc := svcmocks.NewMockUserService(ctrl)
+
+	usersvc.EXPECT().SignUp(gomock.Any(), gomock.Any()).
+		Return(errors.New("mock error"))
+	err := usersvc.SignUp(context.Background(), domain.User{
+		Email: "123@qq.com",
+	})
+	t.Log(err)
+}
+
+```
