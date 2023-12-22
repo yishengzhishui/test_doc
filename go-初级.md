@@ -1615,7 +1615,6 @@ go get github.com/DATA-DOG/go-sqlmock
 
 运行测试代码注意：
 
-
 这里运行测试的代码也有点与众不同，在初始化
 
 GORM 的时候需要额外设置三个参数。
@@ -1680,5 +1679,77 @@ func TestGORMUserDAO_Insert(t *testing.T) {
 			assert.Equal(t, tc.wantErr, err)
 		})
 }
+
+```
+
+
+## 集成测试
+
+### 测试用例的相关定义
+
+```go
+testCases := []struct {
+		name string
+
+		// 你要考虑准备数据。
+		before func(t *testing.T)
+		// 以及验证数据 数据库的数据对不对，你 Redis 的数据对不对
+		after   func(t *testing.T)
+		reqBody string
+
+		wantCode int
+		wantBody web.Result
+	}{{}}
+```
+
+
+整个测试用例分成了几个部分：
+
+1. name： 测试名字。
+2. before：准备数据。
+3. after：验证并且删除数据。
+4. requestBody
+5. 预期响应
+6. wantCode：HTTP 状态码。
+7. wantResult：预期数据，因为直接比较
+
+验证代码准备
+
+1. 执行 before：也就是准备数据。
+2. 构建 req。
+3. 准备 recorder。
+4. 调用 ServeHTTP。
+5. 比较结果：
+6. 比较响应码。
+7. 将响应数据反序列化为 JSON 之后再比较。
+
+```go
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.before(t)
+			req, err := http.NewRequest(http.MethodPost,
+				"/users/login_sms/code/send", bytes.NewBuffer([]byte(tc.reqBody)))
+			require.NoError(t, err)
+			// 数据是 JSON 格式
+			req.Header.Set("Content-Type", "application/json")
+			// 这里你就可以继续使用 req
+
+			resp := httptest.NewRecorder()
+			// 这就是 HTTP 请求进去 GIN 框架的入口。
+			// 当你这样调用的时候，GIN 就会处理这个请求
+			// 响应写回到 resp 里
+			server.ServeHTTP(resp, req)
+
+			assert.Equal(t, tc.wantCode, resp.Code)
+			if resp.Code != 200 {
+				return
+			}
+			var webRes web.Result
+			err = json.NewDecoder(resp.Body).Decode(&webRes)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantBody, webRes)
+			tc.after(t)
+		})
+	}
 
 ```
