@@ -1328,7 +1328,6 @@ func NewUserDAO(db *gorm.DB) UserDAO {
 
 这种方式的好处在于，你可以通过接口来隐藏具体实现的细节，使得代码更加灵活和可维护。接口允许你在不修改调用方代码的情况下切换不同的实现，只需要保证新的实现也满足接口的定义即可。因此，返回 `GORMUserDAO` 的指针类型是 Go 中常见的一种做法，符合接口隔离原则和依赖倒置原则。
 
-
 ## 单元测试
 
 Table Driven 模式
@@ -1407,7 +1406,6 @@ func TestMock(t *testing.T) {
 }
 
 ```
-
 
 ### mock test user signup
 
@@ -1523,6 +1521,164 @@ func TestUserHandler_SignUp(t *testing.T) {
 
 		})
 	}
+}
+
+```
+
+### 测试cache - 为第三方接口生成mock
+
+为 Redis.Cmdable生成mock
+
+具体来说：
+
+- `-package=redismocks`: 指定生成的 mock 文件所属的 package 名称为 `redismocks`。
+- `-destination=./webook/internal/repository/cache/redismocks/cmd.mock.go`: 指定生成的 mock 文件的路径为 `./webook/internal/repository/cache/redismocks/cmd.mock.go`。
+- `github.com/redis/go-redis/v9 Cmdable`: 指定需要生成 mock 的接口类型是 `github.com/redis/go-redis/v9` 包中的 `Cmdable` 接口。
+
+这样的操作通常用于在测试中使用 mock 对象替代真实的 `Cmdable` 接口，以便在测试中模拟对 Redis 数据库的操作，而不直接访问真实的 Redis 服务器。
+
+```shell
+mockgen -package=redismocks - destination=
+./webook/internal/repository/cach
+e/redismocks/cmd.mock.go
+github.com/redis/go-redis/v9 Cmdable
+```
+
+测试示例：
+
+```go
+func TestRedisCodeCache_Set(t *testing.T) {
+	testCases := []struct {
+		name string
+		mock func(ctrl *gomock.Controller) redis.Cmdable
+		// 输入
+		ctx   context.Context
+		biz   string
+		phone string
+		code  string
+		// 输出
+		wantErr error
+	}{
+		{
+			name: "验证码设置成功",
+			mock: func(ctrl *gomock.Controller) redis.Cmdable {
+				cmd := redismocks.NewMockCmdable(ctrl)
+				res := redis.NewCmd(context.Background())
+				//res.SetErr(nil)
+				res.SetVal(int64(0))
+				cmd.EXPECT().Eval(gomock.Any(), luaSetCode,
+					[]string{"phone_code:login:152"},
+					[]any{"123456"},
+				).Return(res)
+				return cmd
+			},
+			ctx:     context.Background(),
+			biz:     "login",
+			phone:   "152",
+			code:    "123456",
+			wantErr: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			c := NewCodeCache(tc.mock(ctrl))
+			err := c.Set(tc.ctx, tc.biz, tc.phone, tc.code)
+			assert.Equal(t, tc.wantErr, err)
+		})
+	}
+}
+
+```
+
+### 测试dao 使用sqlmock测试
+
+因为 GORM 本身并没有提供一个接口给我们操作，导致我们没办法生成 mock 代码。
+
+使用sqlmock:
+
+sqlmock 虽然名字也带了 mock，但实际上并不像 mock 一样需要搞代码生成，而是可以直接使用。
+
+```shell
+go get github.com/DATA-DOG/go-sqlmock
+```
+
+基本用法：
+
+• 用 sqlmock 来创建一个 db。
+
+• 设置模拟调用。
+
+• 使用 db 来测试代码：在使用 GORM 的时候，就是让 GORM 使用这个 db。
+
+运行测试代码注意：
+
+
+这里运行测试的代码也有点与众不同，在初始化
+
+GORM 的时候需要额外设置三个参数。
+
+1. SkipInitializeWithVersion：如果为 false，那么 GORM 在初始化的时候，会先调用 show version。
+2. DisableAutomiticPing：为 true 不允许 Ping数据库。
+3. SkipDefaultTransaction：为 false 的时候，即便是一个单一增删改语句， GORM 也会开启事务。
+
+这三个选项禁用之后，就可以确保 GORM 不会在初始化的过程中发起额外的调用
+
+例子：
+
+```go
+func TestGORMUserDAO_Insert(t *testing.T) {
+	testCases := []struct {
+		name string
+
+		// 为什么不用 ctrl ?
+		// 因为你这里是 sqlmock，不是 gomock
+		mock func(t *testing.T) *sql.DB
+
+		ctx  context.Context
+		user User
+
+		wantErr error
+	}{
+		{
+			name: "插入成功",
+			mock: func(t *testing.T) *sql.DB {
+				mockDB, mock, err := sqlmock.New()
+				res := sqlmock.NewResult(3, 1)
+				// 这边预期的是正则表达式
+				// 这个写法的意思就是，只要是 INSERT 到 users 的语句
+				mock.ExpectExec("INSERT INTO `users` .*").
+					WillReturnResult(res)
+				require.NoError(t, err)
+				return mockDB
+			},
+			user: User{
+				Email: sql.NullString{
+					String: "123@qq.com",
+					Valid:  true,
+				},
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db, err := gorm.Open(gormMysql.New(gormMysql.Config{
+				Conn: tc.mock(t),
+				// SELECT VERSION;
+				SkipInitializeWithVersion: true,
+			}), &gorm.Config{
+				// 你 mock DB 不需要 ping
+				DisableAutomaticPing: true,
+				// 这个是什么呢？
+				SkipDefaultTransaction: true,
+			})
+			d := NewUserDao(db)
+			u := tc.user
+			err = d.Insert(tc.ctx, u)
+			assert.Equal(t, tc.wantErr, err)
+		})
 }
 
 ```
