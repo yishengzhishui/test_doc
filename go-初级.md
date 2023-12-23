@@ -1753,3 +1753,127 @@ testCases := []struct {
 	}
 
 ```
+
+
+## 装饰器模式
+
+### 非组合示例
+
+```go
+package ratelimit
+
+import (
+	"context"
+	"fmt"
+	"gitee.com/geekbang/basic-go/webook/internal/service/sms"
+	"gitee.com/geekbang/basic-go/webook/pkg/ratelimit"
+)
+
+var errLimited = fmt.Errorf("触发了限流")
+
+//sms.Service ratelimit.Limiter都是interface
+type RatelimitSMSService struct {
+	svc     sms.Service
+	limiter ratelimit.Limiter
+}
+
+//因为RatelimitSMSService结构体实现了 sms.Service的所有方法，
+//所有这里 它的指针类型可以当作sms.Service接口类型返回
+// 目的是代码更加灵活，可以用不同的实现替换Service接口，但是不用更改调用方法
+func NewRatelimitSMSService(svc sms.Service, limiter ratelimit.Limiter) sms.Service {
+	return &RatelimitSMSService{
+		svc:     svc,
+		limiter: limiter,
+	}
+}
+
+func (s *RatelimitSMSService) Send(ctx context.Context, tpl string, args []string, numbers ...string) error {
+	limited, err := s.limiter.Limit(ctx, "sms:tencent")
+	if err != nil {
+		// 系统错误
+		// 可以限流：保守策略，你的下游很坑的时候，
+		// 可以不限：你的下游很强，业务可用性要求很高，尽量容错策略
+		// 包一下这个错误
+		return fmt.Errorf("短信服务判断是否限流出现问题，%w", err)
+	}
+	if limited {
+		return errLimited
+	}
+	// 你这里加一些代码，新特性
+	err = s.svc.Send(ctx, tpl, args, numbers...)
+	// 你在这里也可以加一些代码，新特性
+	return err
+}
+
+```
+
+### 另一种实现-组合
+
+```go
+package ratelimit
+
+import (
+	"context"
+	"fmt"
+	"gitee.com/geekbang/basic-go/webook/internal/service/sms"
+	"gitee.com/geekbang/basic-go/webook/pkg/ratelimit"
+)
+
+type RatelimitSMSServiceV1 struct {
+	sms.Service
+	limiter ratelimit.Limiter
+}
+
+func NewRatelimitSMSServiceV1(svc sms.Service, limiter ratelimit.Limiter) sms.Service {
+	return &RatelimitSMSService{
+		svc:     svc,
+		limiter: limiter,
+	}
+}
+
+func (s *RatelimitSMSServiceV1) Send(ctx context.Context, tpl string, args []string, numbers ...string) error {
+	limited, err := s.limiter.Limit(ctx, "sms:tencent")
+	if err != nil {
+		// 系统错误
+		// 可以限流：保守策略，你的下游很坑的时候，
+		// 可以不限：你的下游很强，业务可用性要求很高，尽量容错策略
+		// 包一下这个错误
+		return fmt.Errorf("短信服务判断是否限流出现问题，%w", err)
+	}
+	if limited {
+		return errLimited
+	}
+	// 你这里加一些代码，新特性
+	err = s.Service.Send(ctx, tpl, args, numbers...)
+	// 你在这里也可以加一些代码，新特性
+	return err
+}
+
+```
+
+
+### 主要区别是：
+
+使用组合：
+
+1. 用户可以直接访问 Service，绕开你装饰器本身。
+2. 可以只实现 Service 的部分方法。
+
+不使用组合：
+
+1. 可以有效阻止用户绕开装饰器。
+2. 必须实现 Service 的全部方法
+
+```go
+//组合
+type RatelimitSMSServiceV1 struct {
+	sms.Service
+	limiter ratelimit.Limiter
+}
+//非组合
+type RatelimitSMSService struct {
+	svc     sms.Service
+	limiter ratelimit.Limiter
+}
+
+```

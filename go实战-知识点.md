@@ -584,41 +584,6 @@ func main() {
 
 这种设计使得装饰器模式更加灵活，能够透明地嵌套多个装饰器，并且可以轻松地扩展系统功能。
 
-##### 代码3
-
-```go
-type Cache interface {
-	Get(key string) (string, error)
-}
-
-// 已有的，不是线程安全的
-type memoryMap struct {
-	// 如果你这样添加锁，那么就是一种侵入式的写法，
-	// 那么你就需要测试这个类
-	// 而且有些时候，这个是第三方的依赖，你都改不了
-	// lock sync.RWMutex
-	m map[string]string
-}
-func (m *memoryMap) Get(key string) (string, error) {
-	return m.m[key], nil
-}
-
-// SafeCache 我要改造为线程安全的
-// 无侵入式地改造
-type SafeCache struct {
-	Cache
-	lock sync.RWMutex
-}
-
-func (s *SafeCache) Get(key string) (string, error) {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	return s.Cache.Get(key)
-}
-
-
-```
-
 #### 适配器
 
 新老代码兼容
