@@ -1682,7 +1682,6 @@ func TestGORMUserDAO_Insert(t *testing.T) {
 
 ```
 
-
 ## 集成测试
 
 ### 测试用例的相关定义
@@ -1701,7 +1700,6 @@ testCases := []struct {
 		wantBody web.Result
 	}{{}}
 ```
-
 
 整个测试用例分成了几个部分：
 
@@ -1753,7 +1751,6 @@ testCases := []struct {
 	}
 
 ```
-
 
 ## 装饰器模式
 
@@ -1851,7 +1848,6 @@ func (s *RatelimitSMSServiceV1) Send(ctx context.Context, tpl string, args []str
 
 ```
 
-
 ### 主要区别是：
 
 使用组合：
@@ -1875,5 +1871,63 @@ type RatelimitSMSService struct {
 	svc     sms.Service
 	limiter ratelimit.Limiter
 }
+
+```
+
+## 高可用的短信平台
+
+### 面试要点
+
+```go
+设计并实现了一个高可用的短信平台
+1. 提高可用性：重试机制、客户端限流、failover（轮询，实时检测）
+	1.1 实时检测：
+	1.1.1 基于超时的实时检测（连续超时）
+	1.1.2 基于响应时间的实时检测（比如说，平均响应时间上升 20%）
+ 1.1.3 基于长尾请求的实时检测（比如说，响应时间超过 1s 的请求占比超过了 10%）
+ 1.1.4 错误率
+2. 提高安全性：
+	2.1 完整的资源申请与审批流程
+ 2.2 鉴权：
+	2.2.1 静态 token
+ 2.2.2 动态 token
+3. 提高可观测性：日志、metrics, tracing，丰富完善的排查手段
+4. 提高性能，高性能：
+```
+
+## 微信扫码登录-面试
+
+## 长短token
+
+## 配置模块
+
+使用viper
+
+```go
+func initViper() {
+	// 配置文件的名字，但是不包含文件扩展名
+	// 不包含 .go, .yaml 之类的后缀
+	viper.SetConfigName("dev")
+	// 告诉 viper 我的配置用的是 yaml 格式
+	// 现实中，有很多格式，JSON，XML，YAML，TOML，ini
+	viper.SetConfigType("yaml")
+	// 当前工作目录下的 config 子目录
+	viper.AddConfigPath("./webook/config")
+	//viper.AddConfigPath("/tmp/config")
+	//viper.AddConfigPath("/etc/webook")
+	// 读取配置到 viper 里面，或者你可以理解为加载到内存里面
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
+}
+
+```
+
+## 日志模块
+
+zap日志框架
+
+```go
 
 ```
