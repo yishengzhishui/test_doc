@@ -273,7 +273,7 @@ func main() {
 	DeferClosureLoopV1() // 都是10
 	DeferClosureLoopV2() // 9～0
 	DeferClosureLoopV3() // 9～0
-        DeferClosureLoopV3() // 都是9
+        DeferClosureLoopV4() // 都是9
 }
 ```
 
