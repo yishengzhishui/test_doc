@@ -1099,14 +1099,11 @@ func (o *OnceClose) Close() error {
 }
 ```
 
-
 ### sync.pool面试
-
 
 基本上，sync.Pool 面试的热点就是两个：
 
 1. sync.Pool 和 GC 的关系：数据默认在 local 里面，GC 的时候会被挪过去 victim 里面。如果这时候有P 用了 victim的数据，那么数据会被放回去 local 里面。
-
 2. poolChain 的设计：核心在于理解 poolChain 是一个双向链表加 ring buffer 的双重结构。
 
 由这两个核心衍生出来的各种问题：
@@ -1142,3 +1139,13 @@ func (o *OnceClose) Close() error {
 2. Go 对象是怎么对齐的？按照字长。有些比较恶心的面试官可能要你手动演示如何对齐，或者写一个对象问你怎么计算对象的大小。
 3. 怎么计算对象地址？对象的起始地址是通过反射来获取，对象内部字段的地址是通过起始地址 + 字段偏移量来计算。
 4. unsafe 为什么比反射高效？可以简单认为反射帮我们封装了很多 unsafe 的操作，所以我们直接使用 unsafe 绕开了这种封装的开销。有点像是我们不用 ORM 框架，而是直接自己写 SQL 执行查询。
+
+
+## AST 编程
+
+### 入门-基本步骤
+
+1. 使用`token.NewFileSet`创建`FileSet`
+2. 使用`parser.ParseFile`开始解析源码，可以指定mode
+3. 实现`ast.Visitor`的接口，作为遍历AST的处理器，我们可以利用该实现达到 读取、篡改AST树的目的
+4. 调用`ast.Walk`开始遍历AST
