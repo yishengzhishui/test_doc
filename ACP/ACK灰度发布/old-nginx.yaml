@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: old-nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      run: old-nginx
+  template:
+    metadata:
+      labels:
+        run: old-nginx
+    spec:
+      containers:
+        # 定义老版本的容器
+        - image: registry.cn-hangzhou.aliyuncs.com/acs-sample/old-nginx
+          imagePullPolicy: Always
+          name: old-nginx
+          ports:
+            - containerPort: 80
+              protocol: TCP
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: old-nginx
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    run: old-nginx
+  # 不使用会话保持
+  sessionAffinity: None
+  # 将 Service 暴露为 NodePort 类型
+  type: NodePort
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gray-release
+spec:
+  rules:
+    - host: www.example.com
+      http:
+        paths:
+          # 将 www.example.com 上的请求路由到老版本服务
+          - path: /
+            backend:
+              service:
+                name: old-nginx
+                port:
+                  number: 80
+            pathType: ImplementationSpecific
+            #表示 Ingress 控制器应该根据实现的具体情况来处理路径。
+            #这允许 Ingress 控制器根据其实现的方式来解释路径，
+            #而不是按照 Kubernetes Ingress 规范的标准方式。
+            #这种方式可以提供更大的灵活性，使 Ingress 控制器能够适应不同的需求和环境。

@@ -1,0 +1,80 @@
+#设置满足特定规则的客户端才能访问新版本服务。以下示例仅请求头中满足foo=bar的客户端请求才能路由到新版本服务。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gray-release-canary
+  annotations:
+    # 启用灰度发布
+    nginx.ingress.kubernetes.io/canary: "true"
+    # 通过请求头中的 "foo" 字段进行灰度发布条件的指定
+    nginx.ingress.kubernetes.io/canary-by-header: "foo"
+    # 仅当请求头中的 "foo" 值为 "bar" 时，路由到新版本服务
+    nginx.ingress.kubernetes.io/canary-by-header-value: "bar"
+spec:
+  rules:
+    - host: www.example.com
+      http:
+        paths:
+          # 新版本服务
+          - path: /
+            backend:
+              service:
+                name: new-nginx
+                port:
+                  number: 80
+            pathType: ImplementationSpecific
+
+
+---
+#在特定规则未被满足时，再按照一定比例将请求路由到新版本服务中。以下示例要求请求头中满足foo=bar的客户端请求，若不包含该请求头，再将50%的流量路由到新版本服务中。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gray-release-canary
+  annotations:
+    # 启用灰度发布
+    nginx.ingress.kubernetes.io/canary: "true"
+    # 通过请求头中的 "foo" 字段进行灰度发布条件的指定
+    nginx.ingress.kubernetes.io/canary-by-header: "foo"
+    # 仅当请求头中的 "foo" 值为 "bar" 时，如果请求头不存在，则将 50% 的流量路由到新版本服务
+    nginx.ingress.kubernetes.io/canary-by-header-value: "bar"
+    nginx.ingress.kubernetes.io/canary-weight: "50"
+spec:
+  rules:
+    - host: www.example.com
+      http:
+        paths:
+          # 新版本服务
+          - path: /
+            backend:
+              service:
+                name: new-nginx
+                port:
+                  number: 80
+            pathType: ImplementationSpecific
+
+
+---
+#设置一定比例的请求被路由到新版本服务中，以下示例中仅50%的流量被路由到新版本服务中。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gray-release-canary
+  annotations:
+    # 启用灰度发布
+    nginx.ingress.kubernetes.io/canary: "true"
+    # 将 50% 的流量直接路由到新版本服务中
+    nginx.ingress.kubernetes.io/canary-weight: "50"
+spec:
+  rules:
+    - host: www.example.com
+      http:
+        paths:
+          # 新版本服务
+          - path: /
+            backend:
+              service:
+                name: new-nginx
+                port:
+                  number: 80
+            pathType: ImplementationSpecific
