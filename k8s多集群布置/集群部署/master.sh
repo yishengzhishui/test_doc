@@ -6,14 +6,20 @@
 
 # init k8s
 # --apiserver-advertise-address=192.168.10.210
+# --pod-network-cidr=10.10.0.0/16 指定了 Pod 网络的 CIDR 地址，这是用于容器之间通信的 IP 地址范围。
+# --kubernetes-version=v1.23.3 指定了 Kubernetes 版本。
+# --v=5 设置详细的日志级别，有助于调试。
 sudo kubeadm init \
     --pod-network-cidr=10.10.0.0/16 \
     --kubernetes-version=v1.23.3 \
     --v=5
 
 # enable kubectl
+# 创建存放 kubectl 配置的目录
 mkdir -p $HOME/.kube
+# 将集群的管理员配置复制到用户的 ~/.kube/config 文件中。
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+# 设置 ~/.kube/config 文件的所有者，确保用户有权访问该文件。
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 # check

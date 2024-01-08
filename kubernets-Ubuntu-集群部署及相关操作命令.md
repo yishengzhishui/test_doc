@@ -166,6 +166,34 @@ docker run [选项] [镜像名] [命令] [参数]
 
 综合起来，这个命令的含义是在后台运行一个与终端交互的Docker容器，同时将容器内部的网络端口映射到主机上的随机端口。这样，你可以在后台运行容器，并通过分配的随机端口与其交互。
 
+## docker tag
+
+`docker tag` 是 Docker 命令，用于给本地的 Docker 镜像添加或修改标签。标签是用于标识镜像的可读性更好的别名，可以让你更容易地理解和管理镜像。
+
+具体命令格式为：
+
+```bash
+docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]
+```
+
+- `SOURCE_IMAGE` 是要添加或修改标签的源镜像的名称或 ID。
+- `TARGET_IMAGE` 是目标镜像的名称或 ID。
+- `[:TAG]` 部分用于指定标签，如果不提供，则默认使用 "latest"。
+
+举个例子，假设有一个名为 `myimage` 的镜像，你可以使用 `docker tag` 命令添加一个标签：
+
+```bash
+docker tag myimage:latest myimage:v1.0
+```
+
+这个命令将 `myimage` 镜像的 `latest` 标签复制为 `v1.0` 标签。现在，`myimage` 镜像就有了两个标签，分别是 `latest` 和 `v1.0`，指向相同的镜像。
+
+使用 `docker tag` 可以更方便地为镜像创建不同的版本标签，或者为镜像添加更具描述性的别名。这对于管理和共享镜像时非常有用。
+
+使用 `docker tag` 给一个镜像打上新的标签后，原来的标签并不会被删除，它仍然存在。`docker tag` 实际上是创建了一个新的标签，而不是替换原有的标签。
+
+如果你想要删除原来的标签，可以使用 `docker rmi` 命令。
+
 ## 数据复制-docker cp
 
 `docker cp` 命令用于在容器和主机之间复制文件或目录。以下是该命令的基本用法：

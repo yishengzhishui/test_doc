@@ -1705,3 +1705,56 @@ cat a.txt
 容器的 /tmp 目录里生成了一个 a.txt 的文件，根据 PV 的定义，它就应该落在 worker 节点的磁盘上，所以我们就**登录 worker 节点**检查一下
 
 Kubernetes 里应对持久化存储的解决方案，一共有三个 API 对象，分别是 PersistentVolume、PersistentVolumeClaim、StorageClass。它们管理的是集群里的存储资源，简单来说就是磁盘，Pod 必须通过它们才能够实现数据持久化。
+
+## 集群启动配置相关
+
+### iptables
+
+iptables 是一个用于配置 Linux 内核防火墙规则的工具。它允许管理员定义和修改规则，以控制进出系统的网络流量。这些规则可以包括允许或拒绝特定端口、IP地址、数据包类型等的流量。
+
+以下是一些 iptables 的基本概念：
+
+1. **规则（Rules）：** iptables 通过规则来定义对网络流量的处理方式。每个规则包含一个条件和一个动作。如果流量符合条件，就执行相应的动作。
+2. **表（Tables）：** iptables 使用不同的表来组织规则。主要的表包括：
+
+   - **filter 表：** 控制数据包的接收、拒绝或转发。
+   - **nat 表：** 用于网络地址转换，通常用于实现端口转发和SNAT/DNAT。
+   - **mangle 表：** 修改数据包的特定字段，如 TTL（Time To Live）。
+3. **链（Chains）：** 表中包含多个链，每个链是一系列规则的集合。主要的链包括：
+
+   - **INPUT：** 处理进入系统的数据包。
+   - **FORWARD：** 处理经过系统的数据包，用于路由。
+   - **OUTPUT：** 处理离开系统的数据包。
+4. **目标（Targets）：** 每个规则有一个目标，定义了如果规则条件匹配时要执行的动作，如 ACCEPT（接受）、DROP（丢弃）等。
+
+通过使用 iptables，系统管理员可以根据特定需求配置防火墙规则，以确保系统网络的安全性。这可以包括限制对特定端口的访问、防止DDoS攻击、设置端口转发等操作。
+
+### 为何关掉swap
+
+在使用 Kubernetes 或类似容器编排工具时，关闭 swap 是推荐的最佳实践，原因如下：
+
+1. **性能：** 使用 swap 空间可能会导致性能下降，因为从磁盘读取/写入交换分区的速度远不及内存。当系统开始使用 swap 时，运行在其中的进程可能会因为 IO 操作的延迟而变得更加缓慢。
+2. **可预测性：** Kubernetes等容器编排工具更喜欢可预测的内存行为。当内存不足时，系统会更倾向于杀死进程，而不是将进程的内存页交换到磁盘。这种行为更有助于维护整体系统的稳定性。
+3. **避免OOM Killer误杀：** 如果系统启用了 swap，当内存不足时，Linux 的 OOM Killer（Out of Memory Killer）可能会杀死一些进程以释放内存。这可能导致容器中的应用程序被不可预测地终止，从而影响整个应用栈的可用性。
+4. **容器和内存压缩：** 使用 swap 时，容器的内存可能会被交换到磁盘，这会导致容器内部的内存压缩。而在内存压缩过程中，容器内的进程可能会被暂停，影响应用程序的性能。
+
+总体来说，关闭 swap 有助于确保系统的稳定性和性能。在容器化环境中，更推崇通过适当的资源管理和调整容器的内存限制来处理内存需求，而不是依赖于 swap 空间。
+
+### 为什么执行 `sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config`
+
+执行 `sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config` 的目的是将 Kubernetes 集群的管理员配置复制到当前用户的 `~/.kube/config` 文件中。这是因为 `kubectl` 命令默认使用 `~/.kube/config` 文件来获取集群配置信息，以便与 Kubernetes 集群通信。
+
+具体解释如下：
+
+1. **`/etc/kubernetes/admin.conf` 文件：**
+
+   - 在 Kubernetes 初始化过程中，生成了一个管理员配置文件，通常位于 `/etc/kubernetes/admin.conf`。这个配置文件包含连接到 Kubernetes 集群所需的认证信息、API 服务器地址等。
+2. **`$HOME/.kube/config` 文件：**
+
+   - `kubectl` 命令默认会在用户的主目录下寻找 `~/.kube/config` 文件作为配置文件。这个文件用于存储与 Kubernetes 集群通信所需的信息。
+3. **`sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config` 命令：**
+
+   - 这个命令的作用是将管理员配置文件 `/etc/kubernetes/admin.conf` 复制到当前用户的 `~/.kube/config` 文件中。
+   - `cp -i` 选项表示在复制时如果文件已存在则进行交互式提示，确保不会覆盖用户可能已有的配置文件。
+
+通过执行这个命令，当前用户就能够使用 `kubectl` 命令与 Kubernetes 集群进行交互，因为 `kubectl` 将会使用 `~/.kube/config` 文件中的配置信息。这是为了方便用户在本地使用 `kubectl` 工具与集群进行通信。
