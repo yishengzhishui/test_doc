@@ -1466,10 +1466,17 @@ curl --resolve ngx.test:32519:10.211.55.5 http://ngx.test:32519
 ### 基本流程
 
 ```shell
-cd cd k8s_study/ingress/
-/setup.sh  #需要根据文档创建相应的yml，已经放在这个路径下
-cd k8s_study/gateway/
-kubectl apply -f ngx-deploy.yml 创建 Deployment 和 Service 对象
+cd k8s多集群布置/ingress
+##使用 Nginx 公司开发的 Ingress Controller，需要按照它的文档，创建名字空间、RBAC 等相关的资源
+kubectl apply -f common/ns-and-sa.yaml ##创建namespace 和service account
+kubectl apply -f rbac/rbac.yaml ## 配置权限账户
+kubectl apply -f common/nginx-config.yaml
+kubectl apply -f common/default-server-secret.yaml
+
+
+##创建 Deployment 和 Service 对象
+kubectl apply -f deploy.yml 
+kubectl apply -f svc.yml
 kubectl apply -f ingress.yml
 kubectl apply -f kic.yml
 
