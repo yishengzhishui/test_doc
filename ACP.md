@@ -52,7 +52,6 @@ docker run -itd -P  registry.cn-hangzhou.aliyuncs.com/acr-toolkit/ack-cube
 - `--set mariadb.primary.persistence.size=20Gi`: 设置 MariaDB 主数据库的持久化存储的大小为 20GB。这指定了分配给 MariaDB 数据的存储卷的容量。
 - `--set persistence.enabled=false`: 禁用 WordPress 本身的持久化存储。这表示 WordPress 的数据和文件将不会持久化，可能会在 Pod 重新启动时丢失。
 
-
 # 资料汇总
 
 ## Helm3
@@ -112,7 +111,6 @@ helm install my-ingress ingress-nginx/ingress-nginx
 
 这是一个简单的 Helm 3 使用示例，你可以根据需要安装其他 Charts，例如 MySQL、WordPress 等。请注意，Helm 3 不再需要执行 `helm init` 和 Tiller，所有操作直接与 Kubernetes API 交互。
 
-
 ## `nodeSelector` 和 `nodeAffinity`
 
 `nodeSelector` 和 `nodeAffinity` 是 Kubernetes 中用于指定 Pod 在调度时所需的节点条件的两种机制。
@@ -121,6 +119,7 @@ helm install my-ingress ingress-nginx/ingress-nginx
 
    - `nodeSelector` 允许你在 Pod 规格中指定一组键值对，以选择符合特定标签的节点。只有具有匹配标签的节点才会被考虑用于调度该 Pod。
    - 示例：
+
      ```yaml
      apiVersion: v1
      kind: Pod
@@ -140,6 +139,7 @@ helm install my-ingress ingress-nginx/ingress-nginx
    - `nodeAffinity` 是更灵活的机制，允许你指定更复杂的节点选择条件。它包括 `requiredDuringSchedulingIgnoredDuringExecution` 和 `preferredDuringSchedulingIgnoredDuringExecution` 两种方式。
    - `requiredDuringSchedulingIgnoredDuringExecution` 定义了必须满足的节点选择条件，而 `preferredDuringSchedulingIgnoredDuringExecution` 定义了优选条件，如果无法满足则尽量满足。
    - 示例：
+
      ```yaml
      apiVersion: v1
      kind: Pod
@@ -171,7 +171,6 @@ helm install my-ingress ingress-nginx/ingress-nginx
      上述示例中，Pod 要求在节点上有 `diskType=ssd` 的标签，并且尽量在有 `memory=large` 的节点上运行。
 
 这些机制允许根据节点的特定标签或其他条件，将 Pod 调度到满足特定要求的节点上。这对于在集群中的不同节点上运行特定类型的工作负载非常有用。
-
 
 ## Network Policy
 
@@ -273,3 +272,124 @@ Calico（Project Calico）是一个用于容器和云原生环境的开源网络
    部署一些 Pod，并尝试在它们之间测试网络连接。通过使用定义的 Network Policy，可以验证网络策略是否生效。
 
 这只是一个简单的示例，实际上您可能需要根据自己的需求定制 Network Policy，并根据实际情况进行调整。建议查阅 Calico 官方文档以获取更详细和定制化的信息。
+
+
+## kubectl expose
+
+`kubectl expose pod nginx --port=80`
+
+这个命令用于将一个 Pod 暴露为 Kubernetes 集群内的服务。具体而言，它创建一个 Service 对象，该对象充当前端，将外部流量引导到运行在 Pod 内的 Nginx 应用程序。
+
+- `kubectl expose`: 这是 Kubernetes 的命令行工具，用于与集群进行交互。
+- `pod nginx`: 这部分指定要暴露的 Pod 的名称。在这里，假设存在一个名为 "nginx" 的 Pod，该 Pod 中运行着 Nginx 服务。
+- `--port=80`: 这个标志指定了 Service 对象将监听的端口。在这里，Service 将监听端口 80，这是常用的 HTTP 服务端口。
+
+通过执行这个命令，Kubernetes 将创建一个 Service 对象，该对象将分配一个集群内部的 IP 地址，并在该 IP 地址上监听指定的端口（这里是 80）。其他在同一集群内的 Pod 可以通过该 Service 的名称访问 Nginx 服务，而无需关心 Nginx 运行在哪个 Pod 上。这提供了一种抽象，使得服务发现更加简单和灵活。
+
+## kubectl run
+
+```bash
+kubectl run busybox --rm -ti --image=busybox /bin/sh
+
+```
+
+这个命令用于在 Kubernetes 集群中启动一个独立的容器，以运行 BusyBox 镜像，并在容器内部启动一个交互式的 Shell。
+
+- `kubectl run busybox`: 这是 Kubernetes 的命令行工具，用于在集群中创建一个 Pod。在这里，它创建了一个名为 "busybox" 的 Pod。
+- `--rm`: 这个标志表示在退出交互式 Shell 后删除 Pod。这是因为这个命令主要用于一次性任务或测试，完成后就将 Pod 删除。
+- `-ti`: 这两个标志结合在一起，表示分配一个交互式终端（tty）以供用户使用。
+- `--image=busybox`: 这个标志指定要使用的容器镜像，这里是 BusyBox。
+- `/bin/sh`: 这是在 BusyBox 容器内部执行的命令。具体而言，它启动了一个 Bourne shell（/bin/sh）。
+
+通过执行这个命令，Kubernetes 将在集群中创建一个运行 BusyBox 镜像的 Pod，并将用户连接到该 Pod 内部的交互式 Shell。这对于调试、测试和执行一次性任务非常有用。
+
+```bash
+kubectl run nginx --image=nginx
+```
+
+
+这个命令使用 Kubernetes 的 `kubectl` 工具创建了一个名为 "nginx" 的 Deployment，并使用了官方的 Nginx 镜像。让我来详细解释一下：
+
+- `kubectl run nginx`：创建一个名为 "nginx" 的 Deployment，Deployment 是 Kubernetes 中用于管理 Pod 的资源对象。
+- `--image=nginx`：指定使用 Nginx 镜像，这是在新创建的 Pod 中要运行的容器镜像。
+
+这个命令创建的 Deployment 会自动为其所管理的 Pod 添加一个标签 `run=nginx`。这个标签是由 `kubectl run` 命令自动生成并附加到创建的 Pod 上。
+
+
+## dig
+
+```bash
+dig +short www.aliyun.com 
+```
+
+`dig` 是一个用于查询 DNS 信息的工具，而 `+short` 是一个选项，它的作用是以一种简短的方式输出查询结果。
+
+### dig 常用命令
+
+以下是 `dig` 命令的一些常见用法及示例：
+
+1. **查询域名的 A 记录（IPv4 地址）：**
+
+   ```bash
+   dig example.com
+   ```
+
+   这将输出域名 `example.com` 的 IPv4 地址。
+2. **查询域名的 AAAA 记录（IPv6 地址）：**
+
+   ```bash
+   dig AAAA example.com
+   ```
+
+   这将输出域名 `example.com` 的 IPv6 地址。
+3. **查询域名的 MX 记录（邮件交换记录）：**
+
+   ```bash
+   dig MX example.com
+   ```
+
+   这将输出域名 `example.com` 的邮件交换记录。
+4. **查询域名的 NS 记录（域名服务器记录）：**
+
+   ```bash
+   dig NS example.com
+   ```
+
+   这将输出域名 `example.com` 的域名服务器记录。
+5. **逆向查询 IP 地址的域名：**
+
+   ```bash
+   dig -x 8.8.8.8
+   ```
+
+   这将输出 IP 地址 `8.8.8.8` 对应的域名。
+6. **指定 DNS 服务器进行查询：**
+
+   ```bash
+   dig example.com @custom-dns-server
+   ```
+
+   这将使用自定义的 DNS 服务器查询域名 `example.com`。
+7. **查询域名的 CNAME 记录：**
+
+   ```bash
+   dig CNAME example.com
+   ```
+
+   这将输出域名 `example.com` 的规范名称记录。
+8. **显示更详细的信息（所有记录）：**
+
+   ```bash
+   dig +all example.com
+   ```
+
+   这将显示域名 `example.com` 的所有记录，包括 A、AAAA、MX、NS 等。
+
+
+## kubectl get
+
+```bash
+kubectl get pod --show-labels
+```
+
+这个命令用于获取当前 Kubernetes 集群中所有 Pod 的信息，并显示它们的标签。

@@ -1,0 +1,28 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  # 指定网络策略所属的命名空间
+  namespace: test-up
+  # 指定网络策略的名称
+  name: deny-public-net
+spec:
+  # 不指定任何标签的 Pod 将受到此网络策略的影响
+  podSelector: { }
+
+  # 入站规则列表
+  ingress:
+    # 允许来自任何 IP 地址的流量访问
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+
+  # 出站规则列表
+  egress:
+    # 限制流量只能访问以下 IP 地址块
+    - to:
+        - ipBlock:
+            cidr: 192.168.0.0/16
+        - ipBlock:
+            cidr: 172.16.0.0/12
+        - ipBlock:
+            cidr: 10.0.0.0/8

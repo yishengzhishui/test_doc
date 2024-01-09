@@ -1,0 +1,23 @@
+# 定义网络策略的 Kubernetes 资源类型为 NetworkPolicy
+# 需要支持NetworkPolicy 的网络插件
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  # 给这个 NetworkPolicy 资源起一个名字，这里叫做 access-nginx
+  name: access-nginx
+spec:
+  # 选择要应用这个网络策略的 Pod，这里选择具有标签 run=nginx 的 Pod
+  podSelector:
+    matchLabels:
+      run: nginx
+  # 定义入口规则，即允许哪些 Pod 访问被选择的 Pod
+  ingress:
+    - from:
+        # 允许来自具有标签 access=true 的 Pod 的流量
+        - podSelector:
+            matchLabels:
+              access: "true"
+
+#这个 NetworkPolicy 的作用是
+#限制只有具有标签 run=nginx 的 Pod 可以接受来自具有标签 access=true 的 Pod 的网络流量。
+#这是一种网络安全策略，用于控制 Pod 之间的通信。

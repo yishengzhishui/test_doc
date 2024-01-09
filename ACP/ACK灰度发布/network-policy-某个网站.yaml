@@ -1,0 +1,32 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: busybox-policy
+spec:
+  # 选择此网络策略应用的 Pod 标签
+  podSelector:
+    matchLabels:
+      run: busybox
+
+  # 出站规则列表
+  egress:
+    # 第一个规则，允许访问 IP 地址块 47.118.227.116/32
+    - to:
+        - ipBlock:
+            cidr: 47.118.227.116/32
+
+    # 第二个规则，允许访问 IP 地址块 47.118.227.112/32
+    - to:
+        - ipBlock:
+            cidr: 47.118.227.112/32
+
+    # 第三个规则，允许访问任何 IP 地址 和任何命名空间，
+    # 并指定端口为 UDP 协议的
+    # 这个是给DNS域名解析使用的
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+        - namespaceSelector: { }
+      ports:
+        - protocol: UDP
+          port: 53
