@@ -393,3 +393,64 @@ kubectl get pod --show-labels
 ```
 
 这个命令用于获取当前 Kubernetes 集群中所有 Pod 的信息，并显示它们的标签。
+
+
+## 自搭建k8s集群HPA
+
+是的，水平Pod自动伸缩（HPA）需要进行配置才能在Kubernetes中使用。配置包括定义自动伸缩的目标、触发伸缩的指标、最小和最大Pod副本数量等参数。以下是配置HPA的一般步骤：
+
+1. **定义HPA对象：**
+
+   - 在Kubernetes中，您需要创建一个HorizontalPodAutoscaler对象。这通常包括指定目标Deployment或ReplicaSet的名称，以及定义触发伸缩的CPU利用率或其他指标的阈值。
+
+     ```yaml
+     apiVersion: autoscaling/v2beta2
+     kind: HorizontalPodAutoscaler
+     metadata:
+       name: example-hpa
+     spec:
+       scaleTargetRef:
+         apiVersion: apps/v1
+         kind: Deployment
+         name: example-deployment
+       minReplicas: 1
+       maxReplicas: 10
+       metrics:
+       - type: Resource
+         resource:
+           name: cpu
+           targetAverageUtilization: 50
+     ```
+2. **应用配置：**
+
+   - 确保目标Deployment或ReplicaSet的Pod模板中包含适当的资源请求，以便HPA能够根据资源利用率进行伸缩。
+
+     ```yaml
+     apiVersion: apps/v1
+     kind: Deployment
+     metadata:
+       name: example-deployment
+     spec:
+       replicas: 3
+       template:
+         metadata:
+           labels:
+             app: example
+         spec:
+           containers:
+           - name: example-container
+             image: nginx
+             resources:
+               requests:
+                 cpu: "200m"
+                 memory: "200Mi"
+     ```
+3. **部署HPA：**
+
+   - 使用kubectl apply或其他部署工具将HPA配置应用到Kubernetes集群中。
+
+     ```bash
+     kubectl apply -f hpa-config.yaml
+     ```
+
+一旦HPA对象部署到集群中，它将开始监测指定的指标，并在需要时自动调整Pod的数量。确保仔细配置HPA以满足您应用程序的需求。
