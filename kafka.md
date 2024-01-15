@@ -8,11 +8,11 @@
 
 ### 02 术语
 
-* 消息：Record。Kafka是消息引擎嘛，这里的消息就是指Kafka 处理的主要对象。
-* 主题：Topic。**Kafka 中的 "topic" 是一个逻辑上的概念**。主题是承载消息的逻辑容器，在实际使用中多用来区分具体的业务。
-* 分区：Partition。一个有序不变的消息序列。每个主题下可以有多个分区。
-* 消息位移：Offset。表示分区中每条消息的位置信息，是一个单调递增且不变的值。
-* 副本：Replica。Kafka 中同一条消息能够被拷贝到多个地方以提供数据冗余，这些地方就是所谓的副本。副本还分为领导者副本和追随者副本，各自有不同的角色划分。副本是在分区层级下的，即每个分区可配置多个副本实现高可用。
+* 消息：`Record`。Kafka是消息引擎嘛，这里的消息就是指Kafka 处理的主要对象。
+* 主题：`Topic`。**Kafka 中的 "topic" 是一个逻辑上的概念**。主题是承载消息的逻辑容器，在实际使用中多用来区分具体的业务。
+* 分区：`Partition`。一个有序不变的消息序列。每个主题下可以有多个分区。
+* 消息位移：`Offset`。表示分区中每条消息的位置信息，是一个单调递增且不变的值。
+* 副本：`Replica`。Kafka 中同一条消息能够被拷贝到多个地方以提供数据冗余，这些地方就是所谓的副本。副本还分为领导者副本和追随者副本，各自有不同的角色划分。**副本是在分区层级下的**，即每个分区可配置多个副本实现高可用。
 * 生产者：Producer。向主题发布新消息的应用程序。
 * 消费者：Consumer。从主题订阅新消息的应用程序。
 * 消费者位移：Consumer Offset。表征消费者消费进度，每个消费者都有自己的消费者位移。
@@ -29,11 +29,11 @@ Broker：服务代理节点，Kafka服务实例。
 n个组成一个Kafka集群，通常一台机器部署一个Kafka实例，一个实例挂了其他实例仍可以使用，体现了高可用
 
 consumer：消费者
-消费topic 的消息， 一个topic 可以让若干个consumer消费，若干个consumer组成一个 consumer group ，一条消息只能被consumer group 中一个consumer消费，若干个partition 被若干个consumer 同时消费，达到消费者高吞吐量
+消费topic 的消息， 一个topic 可以让若干个consumer消费，若干个consumer组成一个 consumer group ，**一条消息只能被consumer group 中一个consumer消费，**若干个partition 被若干个consumer 同时消费，达到消费者高吞吐量
 
 topic ：主题
 
-partition： 一个topic 可以拥有若干个partition（从 0 开始标识partition ），分布在不同的broker 上， 实现发布与订阅时负载均衡。producer 通过自定义的规则将消息发送到对应topic 下某个partition，以offset标识一条消息在一个partition的唯一性。
+partition： 一个topic 可以拥有若干个partition（从 0 开始标识partition ），**分布在不同的broker 上**， 实现发布与订阅时负载均衡。producer 通过自定义的规则将消息发送到对应topic 下某个partition，以offset标识一条消息在一个partition的唯一性。
 一个partition拥有多个replica，提高容灾能力。
 replica 包含两种类型：leader 副本、follower副本，
 leader副本负责读写请求，follower 副本负责同步leader副本消息，通过副本选举实现故障转移。
@@ -498,10 +498,10 @@ Consumer 端丢失数据主要体现在 Consumer 端要消费的消息不见了�
 > 总体而言，`acks = all` 是 Kafka 中用于控制数据可靠性的一个重要参数，需要根据具体场景和需求进行合理的配置。
 
 1. 设置retries为一个较大的值。这里的retries 同样是Producer的参数，对应前面提到的 Producer 自动重试。当出现网络的瞬时抖动时，消息发送可能会失败，此时配置了retries>0的Producer能够自动重试消息发送，避免消息丢失。
-5. 设置unclean.leader.election.enable＝false。这是 Broker 端的参数，它控制的是哪些Broker 有资格竞选分区的Leader。如果一个 Broker落后原先的Leader太多，那么它一旦成为新的Leader，必然会造成消息的丢失。故一般都要将该参数设置成false，即不允许这种情况的发生。
-6. 设置replication.factor＞＝3。这也是Broker端的参数。其实这里想表述的是，最好将消息多保存几份，毕竟目前防止消息丢失的主要机制就是冗余。
-7. 设置 min.insync.replicas＞1。这依然是Broker 端参数，控制的是消息至少要被写入到多少个副本才算是“已提交”。设置成大于1可以提升消息持久性。在实际环境中千万不要使用默认值1。
-8. 确保replication.factor＞min.insync.replicas。如果两者相等，那么只要有一个副本挂机，整个分区就无法正常工作了。我们不仅要改善消息的持久性，防止数据丢失，还要在不降低可用性的基础上完成。推荐设置成 replication.factor ＝ min.insync.replicas ＋ 1。
+2. 设置unclean.leader.election.enable＝false。这是 Broker 端的参数，它控制的是哪些Broker 有资格竞选分区的Leader。如果一个 Broker落后原先的Leader太多，那么它一旦成为新的Leader，必然会造成消息的丢失。故一般都要将该参数设置成false，即不允许这种情况的发生。
+3. 设置replication.factor＞＝3。这也是Broker端的参数。其实这里想表述的是，最好将消息多保存几份，毕竟目前防止消息丢失的主要机制就是冗余。
+4. 设置 min.insync.replicas＞1。这依然是Broker 端参数，控制的是消息至少要被写入到多少个副本才算是“已提交”。设置成大于1可以提升消息持久性。在实际环境中千万不要使用默认值1。
+5. 确保replication.factor＞min.insync.replicas。如果两者相等，那么只要有一个副本挂机，整个分区就无法正常工作了。我们不仅要改善消息的持久性，防止数据丢失，还要在不降低可用性的基础上完成。推荐设置成 replication.factor ＝ min.insync.replicas ＋ 1。
 
 > 具体来说，如果 `replication.factor` 等于 `min.insync.replicas`，则表示 ISR 中的每个副本都必须确认接收到写入消息，否则生产者不会得到写入成功的确认。这就意味着，如果有一个副本挂机（不可用），整个分区将无法正常工作，因为无法满足 `min.insync.replicas` 的要求。
 >
@@ -524,7 +524,5 @@ Consumer 端丢失数据主要体现在 Consumer 端要消费的消息不见了�
 - `acks = all`：生产者等待所有副本都确认接收到消息。这提供了最高级别的数据可靠性，确保消息不会因为副本故障而丢失。
 
 2）**min.insync.replicas**：`min.insync.replicas` 参数用于设置 ISR（In-Sync Replica，与 Leader 副本同步的副本集合）的最小数量。生产者只有在等待达到这个数量的 ISR 副本确认接收到消息后，才会认为写入操作是成功的。如果无法满足这个条件，生产者将抛出异常，表示写入失败。
-
-
 
 ![image.png](./assets/1697162921831-image.png)

@@ -1932,3 +1932,99 @@ zap日志框架
 
 
 ```
+
+## kafka
+
+docker compose 启动
+
+```yaml
+  kafka:
+    image: 'bitnami/kafka:3.6.0'
+    ports:
+      - '9092:9092'
+      - '9094:9094'
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+#      - 允许自动创建 topic，线上不要开启
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+```
+
+解释：
+
+这段配置是用于启动 Kafka Docker 容器的配置文件，采用的是 Bitnami 的 Kafka 镜像版本 3.6.0。以下是配置中各项参数的解释：
+
+- **KAFKA_CFG_NODE_ID=0：** 指定 Kafka 节点的ID。在一个 Kafka 集群中，每个节点都有一个唯一的ID。
+- **KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true：** 允许自动创建主题。在线上环境中，一般不建议开启这个选项，因为它可能导致未经预期的主题创建。
+- **KAFKA_CFG_PROCESS_ROLES=controller,broker：** 指定 Kafka 节点的角色，包括 controller（控制器）和 broker（代理服务器）。一个 Kafka 集群中只有一个控制器，而有多个代理服务器。
+- **KAFKA_CFG_LISTENERS：** 指定 Kafka 监听器的配置。在这里，定义了三个监听器，分别使用不同的协议和端口：PLAINTEXT（普通文本）协议在 9092 端口，CONTROLLER 协议在 9093 端口，EXTERNAL 协议在 9094 端口。
+- **KAFKA_CFG_ADVERTISED_LISTENERS：** 定义了 Kafka 用于通信的地址和端口。PLAINTEXT 协议使用 "kafka:9092" 地址，EXTERNAL 协议使用 "localhost:9094" 地址。这是对外部客户端可见的地址，通常用于广告和连接。
+- **KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP：** 定义了每个监听器使用的安全协议。在这里，CONTROLLER 和 EXTERNAL 协议使用 PLAINTEXT 安全协议，即明文传输。
+- **KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093：** 指定控制器的选举配置。在这里，设置控制器的投票者为节点ID为0的节点，使用 CONTROLLER 协议在 9093 端口通信。
+- **KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER：** 指定控制器的监听器名称，即使用 CONTROLLER 协议。这与前面的 KAFKA_CFG_CONTROLLER_QUORUM_VOTERS 配置相一致。
+
+这些配置项主要用于定义 Kafka 节点的角色、监听器的配置、广告和连接地址以及控制器的选举配置等。这样的配置适用于搭建一个基本的 Kafka 集群，并提供了一些额外的参数，例如自动创建主题和控制器的配置。
+
+
+### kafka shell 工具
+
+
+直接在启动了 Docker 之后，运行命令
+
+`docker exec -it $id /bin/sh`
+
+注意把 ID 替换为 Docker Compose 启动之后对应的 Kafka 的 ID。
+
+而后切换目录到 `/opt/bitnami/kafka/bin` 下。
+
+
+常用shell命令
+
+
+创建 topic：
+
+```shell
+kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create --partitions3 --replication-factor 1
+```
+
+• 查看一个 topic：
+
+```shell
+kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic first_topic
+```
+
+• 启动一个消费者，监控发送的消息：
+
+```shell
+kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic，
+```
+
+• 启动生产者，发送一条消息：
+
+```shell
+kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+```
+
+### kafka 客户端-Sarama
+
+在 Sarama 里面提供了一些简单的命令行工具，可以看做是 Shell 脚本提供的功能一个子集。
+
+Consumer 和 producer 中的用得比较多。
+
+安装使用 go install 命令，例如：
+
+```shell
+go install github.com/IBM/sarama/tools/kafka-console-consumer@latest
+go install github.com/IBM/sarama/tools/kafka-console-producer@latest
+```
+
+启动消费者，看看是否有消息生产
+
+```shell
+kafka-console-consumer -topic=test_topic -brokers=localhost:9094
+```
