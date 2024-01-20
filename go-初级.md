@@ -1970,9 +1970,7 @@ docker compose 启动
 
 这些配置项主要用于定义 Kafka 节点的角色、监听器的配置、广告和连接地址以及控制器的选举配置等。这样的配置适用于搭建一个基本的 Kafka 集群，并提供了一些额外的参数，例如自动创建主题和控制器的配置。
 
-
 ### kafka shell 工具
-
 
 直接在启动了 Docker 之后，运行命令
 
@@ -1982,9 +1980,7 @@ docker compose 启动
 
 而后切换目录到 `/opt/bitnami/kafka/bin` 下。
 
-
 常用shell命令
-
 
 创建 topic：
 
