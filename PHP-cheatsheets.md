@@ -187,7 +187,7 @@ class NormalClass extends AbstractClassName implements InterfaceName
     protected function protectedFunction(Type $var = null): Type
     {
     }
-    
+  
     /**
      * 静态方法，可以在不实例化类的情况下执行。
      * @param Type
@@ -386,7 +386,7 @@ trait Logger
 class WriteLog
 {
     use Logger;
-    
+  
     public function main()
     {
         return $this->log();
@@ -521,4 +521,3 @@ $text = "A regular expression (shortened as regex) is a sequence of characters t
 $text = preg_replace("/\b(regex)\b/i", 'replaced content', $text);
 echo $text; /*A regular expression (shortened as replaced content) is a sequence of characters that define a search pattern. Usually such patterns are used by string-searching algorithms for 'find' or 'find and replace' operations on strings, or for input validation.*/
 ```
-

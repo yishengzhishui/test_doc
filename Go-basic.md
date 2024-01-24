@@ -4104,3 +4104,59 @@ func main() {
 }
 
 ```
+
+### type T1 T2 vs type T1=T2
+
+在Go语言中，`type` 关键字有两种不同的用法：`type T1 T2` 和 `type T1 = T2`。这两者之间有一些区别。
+
+1. `type T1 T2`：
+
+   - 这种形式用于定义一个新的类型 `T1`，它是类型 `T2` 的别名。
+   - 新类型 `T1` 与 `T2` 是两个不同的类型，它们之间没有直接的关联。
+   - 在类型检查中，`T1` 和 `T2` 被认为是两个不同的类型，不能直接赋值给彼此。
+
+   ```go
+   package main
+
+   import "fmt"
+
+   type ListNodeB struct {
+       // 定义 ListNodeB 的字段
+   }
+
+   type ListNodeA ListNodeB
+
+   func main() {
+       var a ListNodeA
+       var b ListNodeB
+
+       // 编译错误，不能直接赋值
+       a = b
+   }
+   ```
+2. `type T1 = T2`：
+
+   - 这种形式用于定义一个类型别名，`T1` 和 `T2` 是同一个类型的两个名称，可以互相替代使用。
+   - 新类型别名 `T1` 是类型 `T2` 的别名，它们在类型检查中被视为相同的类型。
+   - 可以直接将 `T1` 类型的值赋值给 `T2` 类型的变量，反之亦然。
+
+   ```go
+   package main
+
+   import "fmt"
+
+   type ListNodeB struct {
+       // 定义 ListNodeB 的字段
+   }
+
+   type ListNodeA = ListNodeB
+
+   func main() {
+       var a ListNodeA
+       var b ListNodeB
+
+       // 可以直接赋值
+       a = b
+       b = a
+   }
+   ```
