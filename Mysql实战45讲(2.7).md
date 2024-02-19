@@ -1,6 +1,3 @@
----
-typora-copy-images-to: upload
----
 ## 基础篇
 
 ### 1、查询语句的执行

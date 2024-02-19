@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
 	// 指定目录路径
-	rootDirectory := "/Users/wangxing/test_doc/code_for_leetcode/go"
+	//rootDirectory := "/Users/wangxing/test_doc/code_for_leetcode/go"
+	rootDirectory := "/Users/wangxing/go/src/library"
 
 	// 递归遍历目录
 	err := filepath.Walk(rootDirectory, func(path string, info os.FileInfo, err error) error {
@@ -21,7 +23,7 @@ func main() {
 			return nil // 如果是目录，继续遍历
 		}
 
-		if info.Name() == "README.md" {
+		if strings.Contains(info.Name(), "_test") {
 			// 删除文件
 			err := os.Remove(path)
 			//fmt.Println(path)
