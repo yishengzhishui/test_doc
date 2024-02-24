@@ -56,7 +56,7 @@ CMD ["python3", "app.py"]
 
 ## 入门导图
 
-![image.png](./assets/1692107411229-image.png)
+![image.png](../assets/1692107411229-image.png)
 
 # K8S初级篇
 
@@ -118,7 +118,7 @@ Kubernetes由很多模块组成，可分为核心的组件和选配的插件两�
 * 控制面的节点在 Kubernetes 里叫做 Master Node，一般简称为 Master，它是整个集群里最重要的部分，可以说是 Kubernetes 的大脑和心脏。
 * 数据面的节点叫做 Worker Node，一般就简称为 Worker 或者 Node，相当于 Kubernetes 的手和脚，在 Master 的指挥下干活。
 
-![image.png](./assets/1692195550183-image.png)
+![image.png](../assets/1692195550183-image.png)
 
 ### master 节点
 
@@ -131,7 +131,7 @@ Master 里有 4 个组件，分别是 apiserver、etcd、scheduler、controller-
 3. scheduler 负责容器的编排工作，检查节点的资源状态，把 Pod 调度到最适合的节点上运行，相当于部署人员。因为节点状态和 Pod 信息都存储在 etcd 里，所以 scheduler 必须通过 apiserver 才能获得。
 4. controller-manager 负责维护容器和节点等资源的状态，实现故障检测、服务迁移、应用伸缩等功能，相当于监控运维人员。同样地，它也必须通过 apiserver 获得存储在 etcd 里的信息，才能够实现对资源的各种操作。
 
-![image.png](./assets/1692195763320-image.png)
+![image.png](../assets/1692195763320-image.png)
 
 ### worker节点
 
@@ -141,9 +141,9 @@ Node 里的 3 个组件了，分别是 kubelet、kube-proxy、container-runtime�
 2. kube-proxy 的作用有点特别，它是 Node 的网络代理，只负责管理容器的网络通信，简单来说就是为 Pod 转发 TCP/UDP 数据包，相当于是专职的“小邮差”。
 3. container-runtime 我们就比较熟悉了，它是容器和镜像的实际使用者，在 kubelet 的指挥下创建容器，管理 Pod 的生命周期，是真正干活的“苦力”。
 
-![image.png](./assets/1692195785549-image.png)
+![image.png](../assets/1692195785549-image.png)
 
-![image.png](./assets/1692195910506-image.png)
+![image.png](../assets/1692195910506-image.png)
 
 ## YAML 文件
 
@@ -225,7 +225,7 @@ kubectl run ngx --image=nginx:alpine $out
 
 ### yaml 图
 
-![image.png](./assets/1692277926739-image.png)
+![image.png](../assets/1692277926739-image.png)
 
 ## POD
 
@@ -338,7 +338,7 @@ kubectl apply -f my-pod.yaml
 
 ### Pod 为中心的 Kubernetes 资源对象关系图
 
-![image.png](./assets/1692278675063-image.png)
+![image.png](../assets/1692278675063-image.png)
 
 ## Job and CronJob-离线业务
 
@@ -400,7 +400,7 @@ spec:
 
 OnFailure 是失败原地重启容器，而 Never 则是不重启容器，让 Job 去重新调度生成一个新的 Pod。
 
-![image.png](./assets/1702536037659-image.png)
+![image.png](../assets/1702536037659-image.png)
 
 ### 操作Job
 
@@ -493,7 +493,7 @@ spec:
 
 * `schedule`，用来定义任务周期运行的规则。它使用的是标准的 Cron 语法，指定分钟、小时、天、月、周，和 Linux 上的 crontab 是一样的。
 
-![image.png](./assets/1702536547249-image.png)
+![image.png](../assets/1702536547249-image.png)
 
 #### 操作cronjob
 
@@ -637,7 +637,7 @@ spec:
 
 #### 关系图
 
-![image.png](./assets/1692714101167-image.png)
+![image.png](../assets/1692714101167-image.png)
 
 进行验证：
 
@@ -690,7 +690,7 @@ spec:
 
 #### 关系图
 
-![image.png](./assets/1692714266841-image.png)
+![image.png](../assets/1692714266841-image.png)
 
 验证
 
@@ -716,7 +716,7 @@ kubectl exec -it vol-pod -- sh
 
 ## 导图
 
-![image.png](./assets/1702543246172-image.png)
+![image.png](../assets/1702543246172-image.png)
 
 # 中级
 
@@ -791,7 +791,7 @@ Kubernetes 采用的是这种“贴标签”的方式，通过在 API 对象的�
 
 ##### 关系图：
 
-![image.png](./assets/1693318958590-image.png)
+![image.png](../assets/1693318958590-image.png)
 
 ### 使用Deployment
 
@@ -802,7 +802,7 @@ kubectl apply -f deploy.yml
 kubectl get deploy # 查看状态
 ```
 
-![image.png](./assets/1693319022778-image.png)
+![image.png](../assets/1693319022778-image.png)
 
 字段解释：
 
@@ -893,7 +893,7 @@ spec:
 
 #### Deployment VS DamonSet
 
-![image.png](./assets/1693319971127-image.png)
+![image.png](../assets/1693319971127-image.png)
 
 #### 第二张方案：
 
@@ -1007,7 +1007,7 @@ Kubernetes 会给它分配一个静态 IP 地址，然后它再去自动管理�
 
 **这里 Service 使用了 iptables 技术**，每个节点上的 kube-proxy 组件自动维护 iptables 规则，客户不再关心 Pod 的具体地址，只要访问 Service 的固定 IP 地址，Service 就会根据iptables 规则转发请求给它管理的多个 Pod，是典型的负载均衡架构。
 
-![image.png](./assets/1693404223983-image.png)
+![image.png](../assets/1693404223983-image.png)
 
 ### 要点
 
@@ -1058,7 +1058,7 @@ ports 就很好理解了，里面的三个字段分别表示外部端口、内�
 
 两者之间的关系
 
-![image.png](./assets/1693404452722-image.png)
+![image.png](../assets/1693404452722-image.png)
 
 ### 使用步骤
 
@@ -1164,7 +1164,7 @@ Service 对象的域名完全形式是**对象.名字空间.svc.cluster.local**�
 
 如果我们在使用命令 `kubectl expose` 的时候加上参数 `--type=NodePort`，或者在 YAML 里添加字段 `type:NodePort`，那么 Service 除了会对后端的 Pod做负载均衡之外，还会在集群里的每个节点上创建一个独立的端口，用这个端口对外提供服务，这也正是“NodePort”这个名字的由来。
 
-![image.png](./assets/1693405159372-image.png)
+![image.png](../assets/1693405159372-image.png)
 
 ### type=nodeport的缺点
 
@@ -1275,7 +1275,7 @@ spec:
 
 ## ingress,ingress class 和service的关系图
 
-![image.png](./assets/1693491024705-image.png)
+![image.png](../assets/1693491024705-image.png)
 
 ## 在kubernetes使用
 
@@ -1461,7 +1461,7 @@ curl --resolve ngx.test:32519:10.211.55.5 http://ngx.test:32519
 
 ### 总关系图
 
-![image.png](./assets/1693496723704-image.png)
+![image.png](../assets/1693496723704-image.png)
 
 ### 基本流程
 
@@ -1505,7 +1505,7 @@ kubectl delete -f kic.yml
 
 ## 中级知识点脑图
 
-![image.png](./assets/1693673254340-image.png)
+![image.png](../assets/1693673254340-image.png)
 
 # 高级篇
 
@@ -1558,7 +1558,7 @@ StorageClass 的作用有点像IngressClass，它抽象了特定类型的存储�
 
 #### 简单的关系如下：
 
-![image.png](./assets/1694245915596-image.png)
+![image.png](../assets/1694245915596-image.png)
 
 ### 如何使用 YAML 描述 PersistentVolume
 
@@ -1692,7 +1692,7 @@ spec:
 
 ### Pod 和 PVC/PV 的关系图
 
-![image.png](./assets/1694247068222-image.png)
+![image.png](../assets/1694247068222-image.png)
 
 ```shell
 # 查看一下这个pod 的状态
