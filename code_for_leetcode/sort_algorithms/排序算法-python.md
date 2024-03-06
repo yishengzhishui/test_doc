@@ -94,8 +94,8 @@ def partition(begin,end, arr):
             counter += 1
     arr[pivot], arr[counter] = arr[counter], arr[pivot]
     return counter
-        
-        
+      
+      
 ```
 
 ##### 代码示例2:
@@ -144,7 +144,7 @@ def merge(arr, left,mid,right): # 两个排序好的数组合并
         else:
             temp.append(arr[j])
             j += 1
-        
+      
     while i<= mid: # 如果 前一个数组未走完
         temp.append(arr[i])
         i += 1
@@ -152,7 +152,7 @@ def merge(arr, left,mid,right): # 两个排序好的数组合并
     while j <= right: # 如果 后一个数组未走完
         temp.append(arr[j])
         j += 1
-    
+  
     arr[left:right+1] = temp
 ```
 
