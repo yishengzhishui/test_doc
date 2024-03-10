@@ -2,43 +2,54 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
-func main() {
-	// 指定目录路径
-	//rootDirectory := "/Users/wangxing/test_doc/code_for_leetcode/go"
-	rootDirectory := "/Users/wangxing/go/src/library"
+//func Solution(N int) {
+//	var enable_print int;
+//	enable_print = N % 10;
+//	for N > 0 {
+//		if enable_print == 0 && N % 10 != 0 {
+//			enable_print = 1;
+//		}
+//		if enable_print != 0 {
+//			fmt.Print(N % 10);
+//		}
+//		N = N / 10;
+//	}
+//}
 
-	// 递归遍历目录
-	err := filepath.Walk(rootDirectory, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+func Solution(A []int, B []int, N int) int {
+	cities := make([]int, N+1)
 
-		// 检查文件是否为 readme.md
-		if info.IsDir() {
-			return nil // 如果是目录，继续遍历
-		}
-
-		if strings.Contains(info.Name(), "_test") {
-			// 删除文件
-			err := os.Remove(path)
-			//fmt.Println(path)
-			//fmt.Println(info.Name())
-			if err != nil {
-				fmt.Printf("Error deleting file %s: %v\n", path, err)
-			} else {
-				fmt.Printf("File %s deleted successfully\n", path)
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		fmt.Println("Error:", err)
+	for i := 0; i < len(A); i++ {
+		cities[A[i]]++
+		cities[B[i]]++
 	}
+
+	maxRank := 0
+
+	for i := 0; i < len(A); i++ {
+		rank := cities[A[i]] + cities[B[i]] - 1
+		if rank > maxRank {
+			maxRank = rank
+		}
+	}
+
+	return maxRank
+}
+
+
+func main() {
+	A := []int{1, 2, 3, 3}
+	B := []int{2, 3, 1, 4}
+	N := 4
+	result := Solution(A, B, N)
+	fmt.Println(result) // 应输出 4
+
+	A = []int{1, 2, 4,5}
+	B = []int{2, 3, 5, 6}
+	N = 6
+	result = Solution(A, B, N)
+	fmt.Println(result) // 应输出 4
+
 }
