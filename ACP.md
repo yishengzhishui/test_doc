@@ -273,7 +273,6 @@ Calico（Project Calico）是一个用于容器和云原生环境的开源网络
 
 这只是一个简单的示例，实际上您可能需要根据自己的需求定制 Network Policy，并根据实际情况进行调整。建议查阅 Calico 官方文档以获取更详细和定制化的信息。
 
-
 ## kubectl expose
 
 `kubectl expose pod nginx --port=80`
@@ -307,14 +306,12 @@ kubectl run busybox --rm -ti --image=busybox /bin/sh
 kubectl run nginx --image=nginx
 ```
 
-
 这个命令使用 Kubernetes 的 `kubectl` 工具创建了一个名为 "nginx" 的 Deployment，并使用了官方的 Nginx 镜像。让我来详细解释一下：
 
 - `kubectl run nginx`：创建一个名为 "nginx" 的 Deployment，Deployment 是 Kubernetes 中用于管理 Pod 的资源对象。
 - `--image=nginx`：指定使用 Nginx 镜像，这是在新创建的 Pod 中要运行的容器镜像。
 
 这个命令创建的 Deployment 会自动为其所管理的 Pod 添加一个标签 `run=nginx`。这个标签是由 `kubectl run` 命令自动生成并附加到创建的 Pod 上。
-
 
 ## dig
 
@@ -385,7 +382,6 @@ dig +short www.aliyun.com
 
    这将显示域名 `example.com` 的所有记录，包括 A、AAAA、MX、NS 等。
 
-
 ## kubectl get
 
 ```bash
@@ -393,7 +389,6 @@ kubectl get pod --show-labels
 ```
 
 这个命令用于获取当前 Kubernetes 集群中所有 Pod 的信息，并显示它们的标签。
-
 
 ## 自搭建k8s集群HPA
 
