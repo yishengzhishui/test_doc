@@ -10,7 +10,7 @@ docker run -itd -P  registry.cn-hangzhou.aliyuncs.com/acr-toolkit/ack-cube
 
 原因：阿里云的安全组规则需要改动，允许外部访问这个端口
 
-![image.png](./assets/1704701378559-image.png)
+![image.png](../../assets/1704701378559-image.png)
 
 ## 使用介绍
 

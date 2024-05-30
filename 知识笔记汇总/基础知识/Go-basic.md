@@ -2596,11 +2596,11 @@ func main() {
 
 为不同项目指定GOPATH 在引入包的时候，会方便一点
 
-这个GOPATH=`$HOME/go`,项目的路径是:`/Users/wangxing/go/src/go_learning/code`![image.png](./assets/1698913568044-image.png)
+这个GOPATH=`$HOME/go`,项目的路径是:`/Users/wangxing/go/src/go_learning/code`![image.png](../../assets/1698913568044-image.png)
 
 ### init 方法
 
-![image.png](./assets/1698913837413-image.png)
+![image.png](../../assets/1698913837413-image.png)
 
 ### 管理依赖
 
@@ -2999,7 +2999,7 @@ go test mypackage
 
 主文件和测试文件可以放在一个目录下，package 需要一致
 
-![image.png](./assets/1698994291272-image.png)
+![image.png](../../assets/1698994291272-image.png)
 
 ```go
 // function.go
@@ -3061,11 +3061,11 @@ func TestSquareWithAssert(t *testing.T) {
 
 Error：测试失败，继续下一步：
 
-![image.png](./assets/1698994895046-image.png)
+![image.png](../../assets/1698994895046-image.png)
 
 Fatal：测试失败，本测试终止：
 
-![image.png](./assets/1698995077010-image.png)
+![image.png](../../assets/1698995077010-image.png)
 
 ### go test
 
@@ -3584,7 +3584,7 @@ e := &Employee{"1", "Mike", 30}
 
 从上面代码可以知道，reflect.ValueOf(*e)返回的是一个实际的结构体值 和reflect.ValueOf(e)返回的是一个指向这个结构体的指针。
 
-![image.png](./assets/1699006543301-image.png)
+![image.png](../../assets/1699006543301-image.png)
 
 `reflect.ValueOf(e)` 返回的是指针类型的 `reflect.Value`，而不是实际的结构体值。如果你尝试在指针上调用 `FieldByName` 方法，会导致 panic。
 

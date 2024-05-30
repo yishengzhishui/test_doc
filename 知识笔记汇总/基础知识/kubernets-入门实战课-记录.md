@@ -73,7 +73,7 @@ docker run -it alpine sh
 3. 相比虚拟机技术，容器更加轻巧、更加高效，消耗的系统资源非常少，在云计算时代极具优势。
 4. 容器的基本实现技术是 Linux 系统里的 namespace、cgroup、chroot。
 
-![image.png](./assets/image.png)
+![image.png](../../assets/image.png)
 
 ### 镜像操作
 
@@ -121,9 +121,9 @@ docker rm 容器的id //只是删除容器，不是删除镜像
 docker run -d --rm nginx:alpine // --rm参数 是不保存容器，用完了就删除
 ```
 
-![image.png](./assets/1691830013727-image.png)
+![image.png](../../assets/1691830013727-image.png)
 
-![image.png](./assets/1692107029950-image.png)
+![image.png](../../assets/1692107029950-image.png)
 
 ### Dockerfile
 
@@ -258,7 +258,7 @@ CMD ["python3", "app.py"]
 
 ### 数据交换
 
-![image.png](./assets/1691908922910-image.png)
+![image.png](../../assets/1691908922910-image.png)
 
 ```shell
 docker run -d --rm redis
@@ -347,7 +347,7 @@ docker run -d -p 8080:80 --rm nginx:alpine
 
 ### 入门导图
 
-![image.png](./assets/1692107411229-image.png)
+![image.png](../../assets/1692107411229-image.png)
 
 ### 演练
 
@@ -414,7 +414,7 @@ kubectl run ngx --image=nginx:alpine
 
 ### 自动化运维-kubernetes Node
 
-![image.png](./assets/1692195550183-image.png)
+![image.png](../../assets/1692195550183-image.png)
 
 * 控制面的节点在 Kubernetes 里叫做 Master Node，一般简称为 Master，它是整个集群里最重要的部分，可以说是 Kubernetes 的大脑和心脏。
 * 数据面的节点叫做 Worker Node，一般就简称为 Worker 或者 Node，相当于 Kubernetes 的手和脚，在 Master 的指挥下干活。
@@ -423,7 +423,7 @@ kubectl run ngx --image=nginx:alpine
 
 Master 里有 4 个组件，分别是 apiserver、etcd、scheduler、controller-manager。
 
-![image.png](./assets/1692195763320-image.png)
+![image.png](../../assets/1692195763320-image.png)
 
 1. apiserver 是 Master 节点——同时也是整个 Kubernetes 系统的唯一入口，它对外公开了一系列的 RESTful API，并且加上了验证、授权等功能，所有其他组件都只能和它直接通信，可以说是 Kubernetes 里的联络员。
 2. etcd 是一个高可用的分布式 Key-Value 数据库，用来持久化存储系统里的各种资源对象和状态，相当于 Kubernetes 里的配置管理员。注意它只与 apiserver 有直接联系，也就是说任何其他组件想要读写 etcd 里的数据都必须经过 apiserver。
@@ -432,7 +432,7 @@ Master 里有 4 个组件，分别是 apiserver、etcd、scheduler、controller-
 
 Node 里的 3 个组件了，分别是 kubelet、kube-proxy、container-runtime。
 
-![image.png](./assets/1692195785549-image.png)
+![image.png](../../assets/1692195785549-image.png)
 
 1. kubelet 是 Node 的代理，负责管理 Node 相关的绝大部分操作，Node 上只有它能够与 apiserver 通信，实现状态报告、命令下发、启停容器等功能，相当于是 Node 上的一个“小管家”。
 2. kube-proxy 的作用有点特别，它是 Node 的网络代理，只负责管理容器的网络通信，简单来说就是为 Pod 转发 TCP/UDP 数据包，相当于是专职的“小邮差”。
@@ -449,11 +449,11 @@ Kubernetes 的大致工作流程了：
 
 Kubernetes 能够在集群级别管理应用和服务器，可以认为是一种集群操作系统。它使用“控制面 / 数据面”的基本架构，Master 节点实现管理控制功能，Worker 节点运行具体业务。Kubernetes 由很多模块组成，可分为核心的组件和选配的插件两类。Master 里有 4 个组件，分别是 apiserver、etcd、scheduler、controller-manager。Node 里有 3 个组件，分别是 kubelet、kube-proxy、container-runtime。通常必备的插件有 DNS 和 Dashboard。
 
-![image.png](./assets/1692195910506-image.png)
+![image.png](../../assets/1692195910506-image.png)
 
 ### YAML 文件编写
 
-![image.png](./assets/1692277926739-image.png)
+![image.png](../../assets/1692277926739-image.png)
 
 因为 apiserver 是 Kubernetes 系统的唯一入口，外部用户和内部组件都必须和它通信，而它采用了 HTTP 协议的 URL 资源理念，API 风格也用 RESTful 的 GET/POST/DELETE 等等，所以，这些概念很自然地就被称为是“API 对象”了。
 
@@ -543,7 +543,7 @@ kubectl run ngx --image=nginx:alpine $out
 
 ### POD
 
-![image.png](./assets/1692278675063-image.png)
+![image.png](../../assets/1692278675063-image.png)
 
 ```yaml
 apiVersion: v1
@@ -849,7 +849,7 @@ spec:
 
 同样的对于机密配置数据， USERNAME、PASSWORD 引用的是 Secret 对象，要使用字段“secretKeyRef”，再用“name”指定 Secret 对象的名字 user，用“key”字段应用它里面的 name 和 pwd 。
 
-![image.png](./assets/1692714101167-image.png)
+![image.png](../../assets/1692714101167-image.png)
 
 进行验证：
 
@@ -898,7 +898,7 @@ spec:
     command: ["/bin/sleep", "300"]
 ```
 
-![image.png](./assets/1692714266841-image.png)
+![image.png](../../assets/1692714266841-image.png)
 
 验证
 
@@ -1133,7 +1133,7 @@ spec:
 
 关系：
 
-![image.png](./assets/1693318958590-image.png)
+![image.png](../../assets/1693318958590-image.png)
 
 创建对象：
 
@@ -1142,7 +1142,7 @@ kubectl apply -f deploy.yml
 kubectl get deploy # 查看状态
 ```
 
-![image.png](./assets/1693319022778-image.png)
+![image.png](../../assets/1693319022778-image.png)
 
 字段解释：
 
@@ -1237,7 +1237,7 @@ spec:
 
 Deployment VS DamonSet
 
-![image.png](./assets/1693319971127-image.png)
+![image.png](../../assets/1693319971127-image.png)
 
 所以就有第二张方案：
 
@@ -1315,7 +1315,7 @@ tolerations:
 
 Kubernetes 会给它分配一个静态 IP 地址，然后它再去自动管理、维护后面动态变化的 Pod 集合，当客户端访问 Service，它就根据某种策略，把流量转发给后面的某个 Pod。
 
-![image.png](./assets/1693404223983-image.png)
+![image.png](../../assets/1693404223983-image.png)
 
 这里 Service 使用了 iptables 技术，每个节点上的 kube-proxy 组件自动维护 iptables 规则，客户不再关心 Pod 的具体地址，只要访问 Service 的固定 IP 地址，Service 就会根据 iptables 规则转发请求给它管理的多个 Pod，是典型的负载均衡架构。
 
@@ -1350,7 +1350,7 @@ selector 和 Deployment/DaemonSet 里的作用是一样的，用来过滤出要�
 
 两者之间的关系
 
-![image.png](./assets/1693404452722-image.png)
+![image.png](../../assets/1693404452722-image.png)
 
 使用步骤
 
@@ -1474,7 +1474,7 @@ kubectl -n kube-system rollout restart deployment coredns # 有的时候需要�
 
 如果我们在使用命令 kubectl expose 的时候加上参数 --type=NodePort，或者在 YAML 里添加字段 type:NodePort，那么 Service 除了会对后端的 Pod 做负载均衡之外，还会在集群里的每个节点上创建一个独立的端口，用这个端口对外提供服务，这也正是“NodePort”这个名字的由来。
 
-![image.png](./assets/1693405159372-image.png)
+![image.png](../../assets/1693405159372-image.png)
 
 小结
 
@@ -1538,7 +1538,7 @@ spec:
   controller: nginx.org/ingress-controller  #使用Nginx 开发的 Ingress Controller
 ```
 
-![image.png](./assets/1693491024705-image.png)
+![image.png](../../assets/1693491024705-image.png)
 
 在kubernetes使用
 
@@ -1683,7 +1683,7 @@ spec:
 
 ```
 
-![image.png](./assets/1693496723704-image.png)
+![image.png](../../assets/1693496723704-image.png)
 
 ##### 基本流程
 
@@ -2101,7 +2101,7 @@ sudo vim /etc/hosts
 
 ### 中级知识点脑图
 
-![image.png](./assets/1693673254340-image.png)
+![image.png](../../assets/1693673254340-image.png)
 
 ## 高级篇
 
@@ -2125,7 +2125,7 @@ StorageClass 的作用有点像IngressClass，它抽象了特定类型的存储�
 
 简单的关系如下：
 
-![image.png](./assets/1694245915596-image.png)
+![image.png](../../assets/1694245915596-image.png)
 
 ##### 如何使用 YAML 描述 PersistentVolume
 
@@ -2252,7 +2252,7 @@ spec:
 
 ##### Pod 和 PVC/PV 的关系图
 
-![image.png](./assets/1694247068222-image.png)
+![image.png](../../assets/1694247068222-image.png)
 
 ```shell
 # 查看一下这个pod 的状态
@@ -2408,7 +2408,7 @@ spec:
 
 关系图：
 
-![image.png](./assets/1694531372659-image.png)
+![image.png](../../assets/1694531372659-image.png)
 
 因为我们在 PV/PVC 里指定了 storageClassName 是 nfs，节点上也安装了 NFS 客户端，**所以 Kubernetes 就会自动执行 NFS 挂载动作**，把 NFS 的共享目录 /tmp/nfs/1g-pv 挂载到 Pod 里的 /tmp，完全不需要我们去手动管理。
 
@@ -2544,7 +2544,7 @@ spec:
 
 关系图
 
-![image.png](./assets/1694532544705-image.png)
+![image.png](../../assets/1694532544705-image.png)
 
 小结：
 
@@ -2644,7 +2644,7 @@ ping redis-sts-0.redis-svc
 
 Service 原本的目的是负载均衡，应该由它在 Pod 前面来转发流量，但是对 StatefulSet 来说，这项功能反而是不必要的，**因为 Pod 已经有了稳定的域名，外界访问服务就不应该再通过 Service 这一层了**。所以，从安全和节约系统资源的角度考虑，我们可以在 Service 里添加一个字段 `clusterIP: None` ，告诉 Kubernetes 不必再为这个对象分配 IP 地址。
 
-![image.png](./assets/1694703592184-image.png)
+![image.png](../../assets/1694703592184-image.png)
 
 #### 如何实现 StatefulSet 的数据持久化
 
@@ -2695,7 +2695,7 @@ spec:
 
 关系图：
 
-![image.png](./assets/1694703709682-image.png)
+![image.png](../../assets/1694703709682-image.png)
 
 ```shell
 #测试
@@ -2903,7 +2903,7 @@ Kubernetes 为检查应用状态定义了三种探针，它们分别对应容器
 2. 如果 Liveness 探针失败，Kubernetes 就会认为容器发生了异常，也会重启容器。
 3. 如果 Readiness 探针失败，Kubernetes 会认为容器虽然在运行，但内部有错误，不能正常提供服务，就会把容器从 Service 对象的负载均衡集合中排除，不会给它分配流量。
 
-![image.png](./assets/1695119260745-image.png)
+![image.png](../../assets/1695119260745-image.png)
 
 #### 如何使用容器状态探针
 

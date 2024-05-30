@@ -1,6 +1,6 @@
 ## 1.第一讲 并发编程-context
 
-![image.png](./assets/1691675805006-image.png)
+![image.png](../../assets/1691675805006-image.png)
 
 ### Context
 
@@ -968,7 +968,7 @@ func (s *SafeListDecorator[T]) Append(t T) {
 
 锁实现的模版
 
-![image.png](./assets/1699284280394-image.png)
+![image.png](../../assets/1699284280394-image.png)
 
 锁的一般实现都是依赖于：自旋作为快路径，等待队列作为慢路径
 

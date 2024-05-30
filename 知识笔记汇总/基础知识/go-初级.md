@@ -233,7 +233,7 @@ func DeferClosureV1() {
 
 #### defer修改返回值
 
-![image.png](./assets/1700649557776-image.png)
+![image.png](../../assets/1700649557776-image.png)
 
 ```go
 func DeferClosureLoopV1() {
@@ -623,7 +623,7 @@ func main() {
 
 ## Gin 入门
 
-![image.png](./assets/1702363877523-image.png)
+![image.png](../../assets/1702363877523-image.png)
 
 Gin中，用Engine来监听一个端口，就是逻辑上的服务器
 
@@ -685,7 +685,7 @@ func main() {
 }
 ```
 
-![image.png](./assets/1702032234775-image.png)
+![image.png](../../assets/1702032234775-image.png)
 
 路由可以集中注册也可以分散注册（就是在对应model中注册，注册在handler方法中）
 
@@ -752,7 +752,7 @@ func createUser(c *gin.Context) {
 regexp "github.com/dlclark/regexp2"
 ````
 
-![image.png](./assets/1702189571783-image.png)~~~~
+![image.png](../../assets/1702189571783-image.png)~~~~
 
 #### 跨域请求
 
@@ -766,7 +766,7 @@ regexp "github.com/dlclark/regexp2"
 
 浏览器的`preflight`请求机制，在preflight请求中告诉浏览器，允许接收localhost:3000的请求。
 
-![image.png](./assets/1702211250970-image.png)
+![image.png](../../assets/1702211250970-image.png)
 
 ##### gin中使用middlwware解决CORS问题
 
@@ -774,15 +774,15 @@ regexp "github.com/dlclark/regexp2"
 
 ##### middleware 在Gin中的使用
 
-![image.png](./assets/1702211975386-image.png)
+![image.png](../../assets/1702211975386-image.png)
 
 使用例子：
 
-![image.png](./assets/1702219069527-image.png)
+![image.png](../../assets/1702219069527-image.png)
 
 ##### 要点
 
-![image.png](./assets/1702219408109-image.png)
+![image.png](../../assets/1702219408109-image.png)
 
 ### 数据库 GORM
 
@@ -845,15 +845,15 @@ func main() {
 
 ##### 层级关系
 
-![image.png](./assets/1702303294886-image.png)
+![image.png](../../assets/1702303294886-image.png)
 
-![image.png](./assets/1702274115458-image.png)
+![image.png](../../assets/1702274115458-image.png)
 
 如何理解 service-repository-domain
 
-![image.png](./assets/1702274747847-image.png)
+![image.png](../../assets/1702274747847-image.png)
 
-![image.png](./assets/1702285413081-image.png)
+![image.png](../../assets/1702285413081-image.png)
 
 ##### 层级关系总结：
 
@@ -892,41 +892,41 @@ brew install --cask docker
 
 ### 加密
 
-![image.png](./assets/1702289876296-image.png)
+![image.png](../../assets/1702289876296-image.png)
 
 #### 如何加密
 
-![image.png](./assets/1702289898681-image.png)
+![image.png](../../assets/1702289898681-image.png)
 
 #### 推荐-BCrypt
 
-![image.png](./assets/1702290120847-image.png)
+![image.png](../../assets/1702290120847-image.png)
 
 #### 邮件冲突-唯一索引冲突错误
 
-![image.png](./assets/1702301704946-image.png)
+![image.png](../../assets/1702301704946-image.png)
 
 #### 错误传导
 
-![image.png](./assets/1702303224457-image.png)
+![image.png](../../assets/1702303224457-image.png)
 
 #### 登录接口
 
-![image.png](./assets/1702304702357-image.png)
+![image.png](../../assets/1702304702357-image.png)
 
 #### cookie and session
 
-![image.png](./assets/1702305989616-image.png)
+![image.png](../../assets/1702305989616-image.png)
 
-![image.png](./assets/1702306092859-image.png)
+![image.png](../../assets/1702306092859-image.png)
 
 ##### sess_id
 
-![image.png](./assets/1702306258483-image.png)
+![image.png](../../assets/1702306258483-image.png)
 
 #### session插件
 
-![image.png](./assets/1702306474973-image.png)
+![image.png](../../assets/1702306474973-image.png)
 
 ##### 登录校验
 
@@ -938,7 +938,7 @@ brew install --cask docker
    ```
 2. 登录成功 设置session
 
-![image.png](./assets/1702309091474-image.png)
+![image.png](../../assets/1702309091474-image.png)
 
 3. 实现一个middleware
 
@@ -981,17 +981,17 @@ brew install --cask docker
 server.Use(middleware.NewLoginMiddlewareBuilder().Build())
 ```
 
-![image.png](./assets/1702309385721-image.png)
+![image.png](../../assets/1702309385721-image.png)
 
 ### session 优化
 
-![image.png](./assets/1702365940205-image.png)
+![image.png](../../assets/1702365940205-image.png)
 
 ##### 优先选择 redis实现
 
-![image.png](./assets/1702366095057-image.png)
+![image.png](../../assets/1702366095057-image.png)
 
-![image.png](./assets/1702369873062-image.png)
+![image.png](../../assets/1702369873062-image.png)
 
 ##### docker-composer redis
 
@@ -1021,7 +1021,7 @@ sess := sessions.Default(ctx)
 
 #### 简介
 
-![image.png](./assets/1702377277300-image.png)
+![image.png](../../assets/1702377277300-image.png)
 
 JWT 主要由三部分组成：
 
@@ -1040,41 +1040,41 @@ JWT 主要用于身份验证和信息交换，例如在 Web 开发中，用户�
 
 #### 使用
 
-![image.png](./assets/1702377243330-image.png)
+![image.png](../../assets/1702377243330-image.png)
 
 #### 步骤总结
 
-![image.png](./assets/1702394831346-image.png)
+![image.png](../../assets/1702394831346-image.png)
 
 #### 优点
 
-![image.png](./assets/1702397411238-image.png)
+![image.png](../../assets/1702397411238-image.png)
 
 ### 保护系统
 
 #### 限流
 
-![image.png](./assets/1702438061709-image.png)
+![image.png](../../assets/1702438061709-image.png)
 
 限流阈值
 
-![image.png](./assets/1702438112134-image.png)
+![image.png](../../assets/1702438112134-image.png)
 
 ##### 限流算法要注意并发问题
 
 部分使用滑动窗口算法可能出并发问题
 
-![image.png](./assets/1702438942301-image.png)
+![image.png](../../assets/1702438942301-image.png)
 
 为何使用redis实现
 
-![image.png](./assets/1702439668681-image.png)
+![image.png](../../assets/1702439668681-image.png)
 
-![image.png](./assets/1702444736553-image.png)
+![image.png](../../assets/1702444736553-image.png)
 
 ##### 面试要点
 
-![image.png](./assets/1702444841166-image.png)
+![image.png](../../assets/1702444841166-image.png)
 
 ## K8S
 
@@ -1149,13 +1149,13 @@ spec:
 
 service的信息如下，这个时候 `http://localhost:88`是可以成功访问的，但是`http://localhost:31500`是不行的，这个是负载均衡对外主动暴露的端口
 
-![image.png](./assets/1702627477416-image.png)
+![image.png](../../assets/1702627477416-image.png)
 
 如果yaml文件中type 是 `NodePort`
 
 那么service信息如下：
 
-![image.png](./assets/1702627802996-image.png)
+![image.png](../../assets/1702627802996-image.png)
 
 我就可以通过`http://localhost:31500`访问，但是`http://localhost:88`就不行了。
 
@@ -1184,7 +1184,7 @@ mysql 默认的挂载路径是`/var/lib/mysql`，但是是可以修改的
 
 使用 type 是 NodePort的情况 需要使用nodeport进行连接
 
-![image.png](./assets/1702657696431-image.png)
+![image.png](../../assets/1702657696431-image.png)
 
 ### 部署Redis
 
@@ -1291,7 +1291,7 @@ user是结构体，data是序列化后存入redis的数据。
 
 同时要考虑并发问题：使用lua脚本将**检查和执行**封装成一个整体行为。
 
-![image.png](./assets/1702896213386-image.png)
+![image.png](../../assets/1702896213386-image.png)
 
 #### 验证：
 
@@ -1338,7 +1338,7 @@ Table Driven 的形式主要分成三个部分：
 2. 具体的测试用例：你设计的每一个测试用例都在这里。
 3. 执行测试用例：这里面还包括了对测试结果进行断言。
 
-![image.png](./assets/1703141809166-image.png)
+![image.png](../../assets/1703141809166-image.png)
 
 ### mock 工具
 

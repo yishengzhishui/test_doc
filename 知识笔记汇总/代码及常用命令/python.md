@@ -26,11 +26,11 @@ rm -rf myenv // 移除不用的虚拟环境
 
 5、在pycharm中，使用当前虚拟环境，需要配置
 
-![image.png](./assets/1710396126911-image.png)
+![image.png](../../assets/1710396126911-image.png)
 
 配置好了后，选择则会解释器就好了。
 
-![image.png](./assets/1710396210479-image.png)
+![image.png](../../assets/1710396210479-image.png)
 
 # 常用语法
 
