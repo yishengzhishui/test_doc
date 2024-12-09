@@ -9,10 +9,15 @@ sudo vi /etc/hostname # 改主机名
 ```
 
 ```shell
+# 更换为阿里云或其他镜像源，阿里云提供了 Docker 镜像仓库，可以使用以下命令
 # 添加 Docker 官方存储库
 #  安装 Docker CE
-sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-sudo yum install -y docker-ce docker-ce-cli containerd.io
+sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+#sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+#sudo yum install -y docker-ce docker-ce-cli containerd.io
+# 指定版本
+sudo yum install -y docker-ce-20.10.24-3.el7 docker-ce-cli-20.10.24-3.el7 containerd.io 
+
 
 ```
 
@@ -95,8 +100,10 @@ echo "cat cat /etc/fstab"
 # 这两个命令用于更新系统的包列表和安装一些基本的软件包，包括支持 HTTPS 传输的软件包、证书、curl 工具以及 NFS 共享的支持。
 sudo yum install -y yum-utils device-mapper-persistent-data lvm2 nfs-utils curl yum-plugin-versionlock
 
-# 添加Kubernetes的APT密钥和源：
-curl -fsSL https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg | sudo rpm --import -
+# 添加Kubernetes的密钥和源：
+#curl -fsSL https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg | sudo rpm --import -
+sudo rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+sudo rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 
 #echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 # 将 Kubernetes 的 APT 源添加到系统的软件源列表中，以便后续通过这个源安装 Kubernetes 软件包。
@@ -155,12 +162,15 @@ do
     docker rmi $repo/$src_name
 done
 
-# 拉取 Flannel 容器镜像
-for name in `grep image flannel.yml |grep -v '#image' | sed 's/image://g' -`;
-do
-    docker pull $name
-done
+## 拉取 Flannel 容器镜像
+#for name in `grep image flannel.yml |grep -v '#image' | sed 's/image://g' -`;
+#do
+#    docker pull $name
+#done
 
+docker pull --platform linux/amd64 rancher/mirrored-flannelcni-flannel-cni-plugin:v1.0.1
+docker pull --platform linux/amd64 rancher/mirrored-flannelcni-flannel:v0.17.0
+# 这两个镜像需要 在自己本地下载后。导入到服务器中，离线安装
 # 检查拉取的容器镜像
 docker images
 ```
