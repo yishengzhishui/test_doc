@@ -115,6 +115,7 @@ NFS（Network File System）适合 Unix/Linux 系统间的文件共享。以下�
 
 - **CentOS/RHEL**：
   ```bash
+  sudo exportfs -r # 用于在修改 /etc/exports 文件后刷新 NFS 共享配置。它能够快速应用更改，而不需要重启 NFS 服务
   sudo systemctl restart nfs
   ```
 
@@ -189,6 +190,7 @@ NFS（Network File System）适合 Unix/Linux 系统间的文件共享。以下�
    writable = yes
    read only = no
    guest ok = yes
+   #valid users = root
 ```
 
 - **[input]**：共享名称，可以改成任意名称（在客户端挂载时将使用该名称）。
@@ -197,6 +199,7 @@ NFS（Network File System）适合 Unix/Linux 系统间的文件共享。以下�
 - **writable = yes**：允许写入权限。
 - **read only = no**：关闭只读模式，允许用户读写。
 - **guest ok = yes**：允许匿名用户访问（如果你希望只允许授权用户访问，可以将其设置为 `no`）。
+- **valid users**：仅允许 root 用户访问该共享。
 
 
 3. **创建 Samba 用户（如果不使用匿名访问）**

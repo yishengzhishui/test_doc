@@ -709,3 +709,121 @@ sudo crontab -u username -e
 - 按照 cron 表语法定义任务运行的时间和命令。
 - 定时任务是非常灵活的工具，适用于自动化日常任务的管理。
 - 在编辑和调试定时任务时，注意环境变量、路径和权限问题。
+
+## service 文件可以放置在自己的文件假中，软链到/etc/systemd/system
+
+---
+
+### **操作步骤**
+
+#### 1. **创建软链接**
+
+假设服务文件位于 `/home/test/my-custom.service`，需要将其链接到 `/etc/systemd/system/`。
+
+运行以下命令：
+
+```bash
+sudo ln -s /home/test/my-custom.service /etc/systemd/system/my-custom.service
+```
+
+- `ln -s`：创建软链接。
+- `/home/test/my-custom.service`：原文件路径。
+- `/etc/systemd/system/my-custom.service`：目标链接路径。
+
+---
+
+#### 2. **验证软链接是否成功**
+
+运行以下命令，检查软链接是否正确：
+
+```bash
+ls -l /etc/systemd/system/my-custom.service
+```
+
+#### 3. **运行**
+
+```bash
+# 重新加载
+sudo systemctl daemon-reload
+```
+
+```bash
+#启动并启用服务
+sudo systemctl enable my-custom.service
+sudo systemctl start my-custom.service
+```
+
+### **注意事项**
+
+1. **推荐使用 `/etc/systemd/system/`**：
+    - `/etc/systemd/system/` 是用于管理员定义的服务，优先级高于 `/usr/lib/systemd/system/`。
+    - 自定义服务一般应放置在 `/etc/systemd/system/` 中。
+
+2. **权限问题**：
+    - 确保源文件 `/home/test/my-custom.service` 的权限允许 `systemd` 读取（通常需要 `root` 权限）。
+    - 检查权限：
+      ```bash
+      ls -l /home/test/my-custom.service
+      ```
+    - 如果需要，调整权限：
+      ```bash
+      sudo chmod 644 /home/test/my-custom.service
+      ```
+
+3. **路径问题**：
+    - 如果 `/home/test` 是网络文件系统（如 NFS），可能会导致启动问题。在这种情况下，建议复制文件而非创建软链接。
+
+## 查看服务器的systemctl的服务：
+
+### 1. 列出所有 `systemctl` 服务
+
+使用 `systemctl list-units` 命令可以列出当前所有加载的服务单元：
+
+```bash
+systemctl list-units --type=service
+```
+
+- `--type=service`：只显示服务单元（`.service` 文件）。
+
+### 2. 统计 `systemctl` 服务数量
+
+如果你只想知道有多少个 `systemctl` 服务单元，可以结合 `wc -l` 统计行数：
+
+```bash
+systemctl list-units --type=service --all | wc -l
+```
+
+- `--all`：显示所有服务单元，包括未加载、未激活和失败的服务。
+- `wc -l`：统计行数，行数即为服务数量。
+
+### 3. 示例输出说明
+
+假设你运行以下命令：
+
+```bash
+systemctl list-units --type=service --all | wc -l
+```
+
+输出可能会是一个数字，比如：
+
+```
+150
+```
+
+这表示当前系统中有 150 个 `systemd` 服务单元（包括激活、未激活和失败的服务）。
+
+### 4. 过滤特定状态的服务
+
+如果你只想统计某种状态的服务数量，比如只统计正在运行的服务，可以这样做：
+
+```bash
+systemctl list-units --type=service --state=running | wc -l
+```
+
+- `--state=running`：仅列出正在运行的服务。
+
+### 总结
+
+- `systemctl list-units --type=service` 列出所有服务。
+- `systemctl list-units --type=service --all | wc -l` 统计所有服务单元的数量。
+- 通过结合 `wc -l`，你可以快速统计系统中有多少 `systemd` 服务。
