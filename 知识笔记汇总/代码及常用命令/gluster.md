@@ -35,17 +35,17 @@ gluster peer status
 - **问题**： 如果节点之间的网络通信有问题，`gluster peer probe` 会失败。可能是防火墙或 SELinux 导致的。
 - **建议**：
 
-    - 确保节点之间的网络互通，特别是 TCP 24007 和 24008 端口。
-    - 如果开启了防火墙，可以放行 GlusterFS 所需的端口：
-      ```shell
-      firewall-cmd --add-service=glusterfs --permanent
-      firewall-cmd --reload
-      ```
-    - 如果使用 SELinux，确保 GlusterFS 相关权限：
-      ```shell
-      setsebool -P virt_sandbox_use_fusefs 1
-      setsebool -P virt_use_samba 1
-      ```
+  - 确保节点之间的网络互通，特别是 TCP 24007 和 24008 端口。
+  - 如果开启了防火墙，可以放行 GlusterFS 所需的端口：
+    ```shell
+    firewall-cmd --add-service=glusterfs --permanent
+    firewall-cmd --reload
+    ```
+  - 如果使用 SELinux，确保 GlusterFS 相关权限：
+    ```shell
+    setsebool -P virt_sandbox_use_fusefs 1
+    setsebool -P virt_use_samba 1
+    ```
 
 ### 4 创建分布式卷
 
@@ -353,6 +353,7 @@ gluster volume geo-replication <master-vol> <remote-host>::<remote-vol> start
 
 ### 总结
 
+
 | 卷类型                 | 特点                                   | 适用场景                   |
 | ------------------------ | ---------------------------------------- | ---------------------------- |
 | **分布式卷**           | 分布存储，无冗余保护                   | 非关键性数据存储           |
@@ -459,6 +460,7 @@ gluster volume create <volume-name> replica 3 <node1>:/data <node2>:/data <node3
 
 ### 对比总结
 
+
 | 特性             | **复制卷**                   | **分布式复制卷**               |
 | ------------------ | ------------------------------ | -------------------------------- |
 | **文件分布方式** | 每个文件复制到所有副本节点上 | 文件分布到不同副本组，组内复制 |
@@ -473,11 +475,11 @@ gluster volume create <volume-name> replica 3 <node1>:/data <node2>:/data <node3
 ### 选择建议
 
 - **使用复制卷**：
-    - 当存储容量需求较小，数据可靠性要求高时。
-    - 适用于关键数据存储的小型集群。
+  - 当存储容量需求较小，数据可靠性要求高时。
+  - 适用于关键数据存储的小型集群。
 - **使用分布式复制卷**：
-    - 当需要在多个节点之间分布存储数据，同时保证可靠性时。
-    - 适用于大规模集群、分布式访问的场景，例如日志存储、分布式文件系统等。
+  - 当需要在多个节点之间分布存储数据，同时保证可靠性时。
+  - 适用于大规模集群、分布式访问的场景，例如日志存储、分布式文件系统等。
 
 # 卷类型更改 分布式改成复制卷
 
@@ -822,11 +824,12 @@ GlusterFS 的主配置文件是 `/etc/glusterfs/glusterd.vol`。
 在 `glusterd.vol` 文件中，可以通过以下选项配置管理端口和通信端口：
 
 - **管理端口**： 配置 `glusterd` 服务的监听端口（默认是 `24007`）：
+
   ```plaintext
   option transport.socket.listen-port 24007
   ```
-
 - **集群通信端口**： 配置 GlusterFS 集群中服务之间通信的端口（默认是 `24008`）：
+
   ```plaintext
   option transport.socket.read-port 24008
   ```
@@ -927,9 +930,7 @@ gluster peer status
    firewall-cmd --permanent --add-port=50000-50010/tcp
    firewall-cmd --reload
    ```
-
 2. **配置范围合理性**： 数据传输端口范围（`low-port` 和 `high-port`）不能过小，否则可能导致并发连接失败。
-
 3. **集群中的所有节点同步配置**：
 
 - 所有 GlusterFS 节点的配置文件 `/etc/glusterfs/glusterd.vol` 必须一致。
@@ -968,11 +969,8 @@ gluster volume get all cluster.brick-port-range
 ### **总结**
 
 1. **管理端口和通信端口**： 修改 `/etc/glusterfs/glusterd.vol`，配置 `listen-port` 和 `read-port`。
-
 2. **数据传输端口范围**： 配置 `low-port` 和 `high-port`，限制数据传输的端口范围。
-
 3. **配置同步和验证**： 确保所有节点同步配置，并重启 GlusterFS 服务。
-
 4. **动态调整（可选）**： 使用 `gluster volume set` 动态调整端口范围，避免重启服务。
 
 配置完成后，重新启动 GlusterFS，并验证新端口是否生效。
