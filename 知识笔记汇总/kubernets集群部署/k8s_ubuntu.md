@@ -199,7 +199,111 @@ kubectl get node
 ```
 
 # 网络通信
+
 ```shell
 kubectl apply -f kube-flannel.yml
+```
+
+# 安装常用工具
+
+## helm
+
+```shell
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version
+```
+
+### 常用国内仓库
+
+```shell
+helm repo add bitnami "https://helm-charts.itboon.top/bitnami" --force-update
+helm repo add grafana "https://helm-charts.itboon.top/grafana" --force-update
+helm repo add prometheus-community "https://helm-charts.itboon.top/prometheus-community" --force-update
+helm repo add ingress-nginx "https://helm-charts.itboon.top/ingress-nginx" --force-update
+helm repo add aliyunstable "https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts"
+helm repo add kubernetes-dashboard	"https://kubernetes.github.io/dashboard/"
+
+helm repo update
 
 ```
+
+## kubernetes-dashboard
+
+```shell
+helm install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --namespace kubernetes-dashboard --create-namespace --version 5.4.1
+```
+
+可能出现镜像拉取失败的
+
+```shell
+docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/dashboard:v2.5.1
+docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/kube-webhook-certgen:v1.5.1
+```
+
+## kube-prometheus-stack
+
+```shell
+helm install kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace prometheus --create-namespace
+```
+
+### 在能够访问外网的服务器下载，然后导入 docker load -i
+
+```shell
+docker pull --platform linux/amd64 docker.io/grafana/grafana:11.5.1
+docker pull --platform linux/amd64 registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.14.0
+```
+
+## 访问Dashboard
+
+```shell
+Get the Kubernetes Dashboard URL by running:
+export POD_NAME=$(kubectl get pods -n kubernetes-dashboard -l "app.kubernetes.io/name=kubernetes-dashboard,app.kubernetes.io/instance=kubernetes-dashboard" -o jsonpath="{.items[0].metadata.name}")
+echo https://127.0.0.1:8443/
+kubectl -n kubernetes-dashboard port-forward $POD_NAME 8443:8443 
+```
+
+在本地访问部署在 Kubernetes 集群中的 Kubernetes Dashboard。以下是对每个命令的解释：
+
+1. **获取 Kubernetes Dashboard Pod 的名称**：
+   ```bash
+   export POD_NAME=$(kubectl get pods -n kubernetes-dashboard -l "app.kubernetes.io/name=kubernetes-dashboard,app.kubernetes.io/instance=kubernetes-dashboard" -o jsonpath="{.items[0].metadata.name}")
+   ```
+    - **作用**：通过指定命名空间（`kubernetes-dashboard`）和标签筛选器，获取 Kubernetes Dashboard Pod 的名称，并将其存储在环境变量 `POD_NAME` 中。
+
+2. **显示本地访问的 URL**：
+   ```bash
+   echo https://127.0.0.1:8443/
+   ```
+    - **作用**：输出本地访问 Dashboard 的 URL。
+
+3. **设置端口转发**：
+   ```bash
+   kubectl -n kubernetes-dashboard port-forward $POD_NAME 8443:8443
+   ```
+    - **作用**：使用 `kubectl port-forward` 命令，将本地机器的 `8443` 端口请求转发到 Kubernetes 集群中指定 Pod 的 `8443` 端口。
+    - **详细说明**：
+        - `-n kubernetes-dashboard`：指定操作的命名空间。
+        - `port-forward`：`kubectl` 的子命令，用于建立本地与 Pod 之间的端口转发。
+        - `$POD_NAME`：之前获取的 Kubernetes Dashboard Pod 的名称。
+        - `8443:8443`：将本地的 `8443` 端口映射到 Pod 的 `8443` 端口。
+
+**总结**：通过上述命令，您可以在本地通过 `https://127.0.0.1:8443/` 访问部署在 Kubernetes 集群中的 Kubernetes
+Dashboard，而无需直接暴露服务到外部网络。这对于在本地管理和监控集群非常方便。 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
