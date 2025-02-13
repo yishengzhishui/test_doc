@@ -1,6 +1,0 @@
-apiVersion: v1
-appVersion: 0.0.1-snx4xi-tmp
-description: A Helm chart for Kubernetes
-icon: https://github.com/ray-project/ray/raw/master/doc/source/images/ray_header_logo.png
-name: ray-cluster
-version: 0.0.1-snx4xi-tmp
