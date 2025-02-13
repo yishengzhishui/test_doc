@@ -48,7 +48,7 @@ cat <<EOF | sudo tee /etc/docker/daemon.json
     "max-size": "100m"
   },
   "storage-driver": "overlay2",
-  "registry-mirrors": ["https://<your-mirror-id>.mirror.aliyuncs.com"]
+  "registry-mirrors": ["https://ed9tlwpf.mirror.aliyuncs.com"]
 }
 EOF
 
@@ -98,36 +98,26 @@ echo "cat cat /etc/fstab"
 ```shell
 #sudo apt update
 # 这两个命令用于更新系统的包列表和安装一些基本的软件包，包括支持 HTTPS 传输的软件包、证书、curl 工具以及 NFS 共享的支持。
-sudo yum install -y yum-utils device-mapper-persistent-data lvm2 nfs-utils curl yum-plugin-versionlock
+sudo apt install -y apt-transport-https ca-certificates curl nfs-common
 
-# 添加Kubernetes的密钥和源：
-#curl -fsSL https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg | sudo rpm --import -
-sudo rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-sudo rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+#sudo curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+# 添加Kubernetes的APT密钥和源：
+# 从阿里云的镜像站下载 Kubernetes 的 APT 密钥，并添加到系统的密钥环中。
+curl https://mirrors.aliyun.com/kubernetes/apt/doc/apt-key.gpg | sudo apt-key add -
 
 #echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 # 将 Kubernetes 的 APT 源添加到系统的软件源列表中，以便后续通过这个源安装 Kubernetes 软件包。
-# baseurl：指定了 Kubernetes 仓库的 URL，适用于 CentOS 7。
-#enabled=1：启用该仓库。
-#gpgcheck=1：启用 GPG 签名检查。
-#repo_gpgcheck=1：启用仓库的 GPG 密钥验证。
-#gpgkey：指定了用于验证软件包签名的 GPG 密钥 URL。
-cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
-[kubernetes]
-name=Kubernetes
-baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-\$basearch
-enabled=1
-gpgcheck=1
-repo_gpgcheck=1
-gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+cat <<EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+deb https://mirrors.aliyun.com/kubernetes/apt/ kubernetes-xenial main
 EOF
 
-
+# 更新系统的软件源
+sudo apt update
 # 安装 Kubernetes 工具，包括 kubeadm、kubelet 和 kubectl。版本号是指定安装的具体版本
-sudo yum install -y kubeadm-1.23.3-0 kubelet-1.23.3-0 kubectl-1.23.3-0
+sudo apt install -y kubeadm=1.23.3-00 kubelet=1.23.3-00 kubectl=1.23.3-00
 # 已安装的 kubeadm、kubelet 和 kubectl 标记为"hold"状态，
 # 防止它们在系统更新时被升级到新的版本。
-sudo yum versionlock kubeadm kubelet kubectl
+sudo apt-mark hold kubeadm kubelet kubectl
 
 # check
 kubeadm version
@@ -168,6 +158,7 @@ done
 #    docker pull $name
 #done
 
+#(在能够访问外网的机器下载)
 docker pull --platform linux/amd64 rancher/mirrored-flannelcni-flannel-cni-plugin:v1.0.1
 docker pull --platform linux/amd64 rancher/mirrored-flannelcni-flannel:v0.17.0
 # 这两个镜像需要 在自己本地下载后。导入到服务器中，离线安装
@@ -205,4 +196,10 @@ kubectl taint nodes --all node-role.kubernetes.io/master-
 # check
 kubectl version
 kubectl get node
+```
+
+# 网络通信
+```shell
+kubectl apply -f kube-flannel.yml
+
 ```
