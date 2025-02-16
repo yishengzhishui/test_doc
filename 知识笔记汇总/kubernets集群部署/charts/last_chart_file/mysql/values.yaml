@@ -5,7 +5,7 @@ service:
   externalPort: 9104
   internalPort: 9104
 image:
-  mysqlimages: iregistry.baidu-int.com/acg-det/mysql
+  mysqlimages: mysql
   tag: 5.7.30
   pullPolicy: IfNotPresent
 mysql:
@@ -15,14 +15,14 @@ mysql:
   resources:
     requests:
       cpu: 1
-      memory: 4Gi
+      memory: 1Gi
   mysqlRootPassword: ivip#BAiDu@2022
   livenessroot: true
   mysqlUser: user
   mysqlUserPassword: userbaidu@123
 mysqlexporter:
   enabled: false
-  image: iregistry.baidu-int.com/acg-det/mysqld-exporter
+  image: prom/mysqld-exporter
   tags: v0.12.1
   mysqlUserexporter: root
   db: ''
@@ -38,7 +38,7 @@ hostPath:
 persistence:
   enabled: true
   accessMode: ReadWriteOnce
-  size: 300Gi
+  size: 3Gi
   annotations: {}
   storageClass: local-path
 livenessProbe:
@@ -51,3 +51,4 @@ readinessProbe:
   timeoutSeconds: 20
   successThreshold: 3
   failureThreshold: 1
+

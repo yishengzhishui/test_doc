@@ -48,7 +48,7 @@ spec:
             {{- end }}
           # Fluent Bit sidecar
           - name: fluentbit
-            image: iregistry.baidu-int.com/themis-public/fluent-bit:v2.0.9
+            image: fluent/fluent-bit:2.0.9
             # These resource requests for Fluent Bit should be sufficient in production.
             resources:
               requests:
