@@ -7,7 +7,7 @@ out_depend_msg:
     HOSTIP: 10.31.80.21
     IDAAS_HOST: ' http://10.65.233.32'
     INGRESS_PORT: "8000"
-    MYSQL_HOST: mysql.ivip
+    MYSQL_HOST: mysql.default.svc.cluster.local
     MYSQL_PASSWORD: ivip#BAiDu@2022
     MYSQL_PORT: "8806"
     MYSQL_USER: root
@@ -23,15 +23,6 @@ out_depend_msg:
     WINDMILL_HOST_PORT: "8340"
     WINDMILL_SECRET_KEY: 63cd4997fa4845ffa20ac64aac651334
 pcb_vrs:
-    affinity:
-        nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: role
-                          operator: In
-                          values:
-                            - ivip-master
     annotations:
         reloader.stakater.com/auto: "false"
     args: []
