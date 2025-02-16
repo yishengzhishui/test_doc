@@ -1,0 +1,10 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: glusterfs-cluster
+spec:
+  ports:
+    - port: 24007
+      targetPort: 24007
+  clusterIP: None
+  type: ClusterIP

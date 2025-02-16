@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: glusterfs-cluster
+subsets:
+  - addresses:
+      - ip: 172.16.114.51  # 你的 GlusterFS 服务器 IP
+    ports:
+      - port: 24007        # 确保端口是 GlusterFS 管理端口

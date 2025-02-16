@@ -288,12 +288,128 @@ kubectl -n kubernetes-dashboard port-forward $POD_NAME 8443:8443
         - `8443:8443`：将本地的 `8443` 端口映射到 Pod 的 `8443` 端口。
 
 **总结**：通过上述命令，您可以在本地通过 `https://127.0.0.1:8443/` 访问部署在 Kubernetes 集群中的 Kubernetes
-Dashboard，而无需直接暴露服务到外部网络。这对于在本地管理和监控集群非常方便。 
+Dashboard，而无需直接暴露服务到外部网络。这对于在本地管理和监控集群非常方便。
 
+# glusterFs
 
+## base
 
+```shell
+sudo apt install -y glusterfs-server glusterfs-client
+sudo systemctl start glusterd
+sudo systemctl enable glusterd
+sudo systemctl status glusterd
+# 创建volume
+gluster volume create pcb-test 172.16.114.51:/data/gluster/test_1 172.16.114.51:/data/gluster/test_2 force
+gluster volume start pcb-test
+gluster volume info
+gluster volume status pcb-test
+```
 
+k8s 相关的服务
 
+```shell
+kubectl apply -f endpint.yaml
+kubectl apply -f service.yaml
+kubectl apply -f pv.yaml
+kubectl apply -f pvc.yaml
+
+需要验证 endpoint service pv pvc 全部正常
+```
+
+## kuberay-operator and  ray-cluster chart
+
+镜像
+
+```shell
+docker pull --platform linux/amd64 kuberay/operator:v0.5.2
+docker pull --platform linux/amd64 fluent/fluent-bit:2.0.9
+```
+
+```shell
+helm install kuberay-operator ~/charts/kuberay-operator-0.0.1.tgz
+helm install ray-cluster ray-cluster-0.0.2.tgz
+```
+
+### **你的 Pod 处于 `Pending` 状态，原因：**
+
+```
+Warning  FailedScheduling  0/1 nodes are available: 1 node(s) didn't match Pod's node affinity/selector.
+```
+
+✅ **这个错误说明 `Pod` 受到了 `nodeSelector` 或 `nodeAffinity` 规则的限制，无法调度到任何节点**。
+
+---
+
+## **1. 确认 `nodeSelector` 限制**
+
+你的 Pod `ray-cluster-kuberay-head-82ws5` 里面有：
+
+```yaml
+Node-Selectors: raycluster=enable
+```
+
+这意味着：
+
+- 你的 Pod **只能调度到带有 `raycluster=enable` 标签的节点**。
+- **如果当前节点没有 `raycluster=enable`，Pod 会一直 `Pending`，无法调度**。
+
+### **检查集群节点是否有 `raycluster=enable`**
+
+```bash
+kubectl get nodes --show-labels
+```
+
+✅ **如果 `LABELS` 里没有 `raycluster=enable`，说明没有合适的节点来运行 Pod**。
+
+---
+
+## **2. 解决方案**
+
+### ✅ **方法 1：给节点添加 `raycluster=enable` 标签**
+
+如果 `kubectl get nodes --show-labels` 发现 **没有 `raycluster=enable` 标签的节点**，你可以手动给节点打标签：
+
+```bash
+kubectl label node <你的节点名称> raycluster=enable
+```
+
+然后检查：
+
+```bash
+kubectl get nodes --show-labels
+```
+
+如果 `raycluster=enable` 出现在 **你的目标节点** 上，Pod 会自动被调度。
+---
+
+## **3. 结论**
+
+✅ **你的 Pod 由于 `nodeSelector: raycluster=enable` 限制，无法找到符合要求的节点。**  
+✅ **你可以给节点手动添加 `raycluster=enable` 标签，或者删除 `nodeSelector` 让 Pod 可以调度到任意节点。**
+
+# mysql
+
+镜像
+
+```shell
+docker pull --platform linux/amd64 mysql:5.7.30
+docker pull --platform linux/amd64 prom/mysqld-exporter:v0.12.1
+```
+
+## 创建 pv和storageClass
+
+```shell
+kubectl apply -f mysql-storage.yaml
+kubectl apply -f mysql_pv.yaml
+```
+
+```shell
+helm install mysql ./mysql 
+#helm install mysql mysql-0.0.2.tgz
+
+kubectl exec -it mysql-0  -- mysql -u root -p
+```
 
 
 

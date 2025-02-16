@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gluster-result-volume-pcb-test
+  creationTimestamp: null
+spec:
+  capacity:
+    storage: 5Gi
+  glusterfs:
+    path: pcb-test
+    endpoints: glusterfs-cluster
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+status: { }
