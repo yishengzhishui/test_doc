@@ -1,0 +1,160 @@
+
+{{- if .Values.pcb_vrs.enable }}
+{{- if and .Values.pcb_vrs.service.ports (not .Values.pcb_vrs.service.extra_usr_define_services) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "pcb-vrs.pcb_vrs.fullname" . }}
+  labels:
+    app: {{ template "pcb-vrs.pcb_vrs.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    app.kubernetes.io/managed-by: '{{ $.Release.Service }}'
+    app.kubernetes.io/instance: '{{ $.Release.Name }}'
+    helm.sh/chart: '{{ $.Chart.Name }}-{{ $.Chart.Version }}'
+    app.kubernetes.io/name: '{{ template "pcb-vrs.pcb_vrs.fullname" $ }}'
+
+  annotations:
+    {{- if (or .Values.pcb_vrs.logExporter.enable .Values.pcb_vrs.service.prometheus_scrape) }}
+    prometheus.io/scrape: "true"
+    {{- end }}
+    {{- if .Values.pcb_vrs.service.annotations }}
+    {{- range $key, $val := .Values.pcb_vrs.service.annotations }}
+    {{$key}}: {{$val}}
+    {{- end }}
+    {{- end }}
+spec:
+  {{- if ne "" .Values.pcb_vrs.service.clusterIP }}
+  clusterIP: {{ .Values.pcb_vrs.service.clusterIP }}
+  {{- end }}
+  type: {{ .Values.pcb_vrs.service.type }}
+  {{- with .Values.pcb_vrs.service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+  {{- end }}
+  {{- with .Values.pcb_vrs.service.sessionAffinityConfig }}
+  sessionAffinityConfig:
+{{ toYaml . | indent 4}}
+  {{- end }}
+  {{- with .Values.pcb_vrs.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ . }}
+  {{- end }}
+  {{- with .Values.pcb_vrs.service.ipFamilies }}
+  ipFamilies:
+    {{- range $index, $value := $.Values.pcb_vrs.service.ipFamilies }}
+    - {{ $value }}
+    {{- end }}
+  {{- end }}
+  ports:
+  {{- range $key, $val := .Values.pcb_vrs.service.ports }}
+  - name: {{ $val.name }}
+  {{- if $val.port }}
+    port: {{ $val.port }}
+  {{- else if $val.containerPort }}
+    port: {{ $val.containerPort }}
+  {{- end }}
+  {{- with $val.appProtocol}}
+    appProtocol: {{.}}
+  {{- end }}
+  {{- with $val.nodePort }}
+    nodePort: {{.}}
+  {{- end }}
+  {{- with $val.protocol }}
+    protocol: {{.}}
+  {{- end }}
+  {{- if $val.containerPort }}
+    targetPort: {{ $val.containerPort }}
+  {{- else if $val.port }}
+    targetPort: {{ $val.port }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.pcb_vrs.logExporter.enable }}
+  - name: log-metric
+    port: {{ $.Values.pcb_vrs.logExporter.port }}
+  {{- end }}
+  selector:
+    app: {{ template "pcb-vrs.pcb_vrs.fullname" . }}
+{{- end}}
+{{- range $service_name, $service := .Values.pcb_vrs.service.extra_usr_define_services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{$service.service_domain}}
+  labels:
+    app: {{ template "pcb-vrs.pcb_vrs.fullname" $ }}
+    chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+    release: "{{ $.Release.Name }}"
+    heritage: "{{ $.Release.Service }}"
+    app.kubernetes.io/managed-by: '{{ $.Release.Service }}'
+    app.kubernetes.io/instance: '{{ $.Release.Name }}'
+    helm.sh/chart: '{{ $.Chart.Name }}-{{ $.Chart.Version }}'
+    app.kubernetes.io/name: '{{ template "pcb-vrs.pcb_vrs.fullname" $ }}'
+
+  annotations:
+  {{- if (or $.Values.pcb_vrs.logExporter.enable $service.prometheus_scrape) }}
+    prometheus.io/scrape: "true"
+  {{- end }}
+  {{- with $service.annotations }}
+  {{- range $key, $val := . }}
+    {{$key}}: {{$val}}
+  {{- end }}
+  {{- end }}
+spec:
+  {{- if ne "" $service.clusterIP }}
+  clusterIP: {{ $service.clusterIP }}
+  {{- end }}
+  type: {{ $service.type }}
+  {{- with $service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+  {{- end }}
+  {{- with $service.healthCheckNodePort }}
+  healthCheckNodePort: {{ . }}
+  {{- end }}
+  {{- with $service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+  {{- end }}
+  {{- with $service.sessionAffinityConfig }}
+  sessionAffinityConfig:
+{{ toYaml . | indent 4}}
+  {{- end }}
+  {{- with $service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ . }}
+  {{- end }}
+  {{- with $service.ipFamilies }}
+  ipFamilies:
+    {{- range $index, $value := $service.ipFamilies }}
+    - {{ $value }}
+    {{- end }}
+  {{- end }}
+  ports:
+  {{- range $key, $val := $service.ports }}
+  - name: {{ $val.name }}
+  {{- if $val.port }}
+    port: {{ $val.port }}
+  {{- else if $val.containerPort }}
+    port: {{ $val.containerPort }}
+  {{- end }}
+  {{- with $val.appProtocol}}
+    appProtocol: {{.}}
+  {{- end }}
+  {{- with $val.nodePort }}
+    nodePort: {{.}}
+  {{- end }}
+  {{- with $val.protocol }}
+    protocol: {{.}}
+  {{- end }}
+  {{- if $val.containerPort }}
+    targetPort: {{ $val.containerPort }}
+  {{- else if $val.port }}
+    targetPort: {{ $val.port }}
+  {{- end }}
+  {{- end }}
+  {{- if $.Values.pcb_vrs.logExporter.enable }}
+  - name: log-metric
+    port: {{ $.Values.pcb_vrs.logExporter.port }}
+  {{- end }}
+  selector:
+    app: {{ template "pcb-vrs.pcb_vrs.fullname" $ }}
+{{- end }}
+{{- end }}

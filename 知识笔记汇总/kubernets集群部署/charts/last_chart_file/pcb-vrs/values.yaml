@@ -1,0 +1,186 @@
+out_depend_msg:
+    APP_ID: 4c036a5150f844d3877a4bb2c561d465
+    CLIENT_ID: 84f124b574eb4200a9f022e6e955a458
+    CLIENT_SECRET: 7e84babca0984ee082e6b0dd2b7e7155
+    COOKIE_DOMAIN: Default
+    ENABLE_IDAAS: "true"
+    HOSTIP: 10.31.80.21
+    IDAAS_HOST: ' http://10.65.233.32'
+    INGRESS_PORT: "8000"
+    MYSQL_HOST: mysql.ivip
+    MYSQL_PASSWORD: ivip#BAiDu@2022
+    MYSQL_PORT: "8806"
+    MYSQL_USER: root
+    PROJECT_ID: f1b269193e7b4376b274f818e10a9411
+    PS_ID: 4c036a5150f844d3877a4bb2c561d465
+    RAY_SERVICE_PORT: "8265"
+    REDIRECT_URL: http://10.65.233.32/login?projectName=GTS&redirect=http://10.65.233.32:8052
+    ServerListenPort: "8973"
+    VRS_DATA_RETENTION_PERIOD: "365"
+    VRS_SERVICE_NODE_PORT: "8050"
+    WINDMILL_ACCESS_KEY: 8c66af93b7c740ff82a22a854720eb26
+    WINDMILL_HOST: 10.65.233.32
+    WINDMILL_HOST_PORT: "8340"
+    WINDMILL_SECRET_KEY: 63cd4997fa4845ffa20ac64aac651334
+pcb_vrs:
+    affinity:
+        nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: role
+                          operator: In
+                          values:
+                            - ivip-master
+    annotations:
+        reloader.stakater.com/auto: "false"
+    args: []
+    chart_config_volumes:
+        configMaps:
+            conf:
+                name: conf
+        secrets: {}
+    cluster_existing_volumes:
+        configMaps: {}
+        secrets: {}
+    command: []
+    config_msg:
+        - config_name: config.toml
+          mountPath: /root/conf/server/config.toml
+          subPath: ""
+          volName: conf
+        - config_name: hosts
+          mountPath: /etc/hosts
+          subPath: ""
+          volName: conf
+    cronjob_msg: {}
+    dnsPolicy: ClusterFirst
+    enable: true
+    hostAliases: null
+    hostNetwork: false
+    image: iregistry.baidu-int.com/themis/pcb-vrs
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets:
+        auths: {}
+    imageTag: "2025011305"
+    init_container_msg: []
+    job_msg: {}
+    labels: {}
+    livenessProbe:
+        content:
+            httpGet:
+                path: /ping
+                port: 8050
+                scheme: HTTP
+        enabled: true
+        failureThreshold: 3
+        initialDelaySeconds: 5
+        periodSeconds: 15
+        successThreshold: 1
+        timeoutSeconds: 10
+    logExporter:
+        enable: false
+    name: pcb-vrs
+    nodeSelector: {}
+    persistence:
+        gluster-result-volume-claim:
+            accessMode: ""
+            annotations: {}
+            asset_storage_name: ""
+            asset_storage_type: ""
+            emptyDir: false
+            emptyDirMedium: ""
+            enabled: true
+            hostPath: /
+            hostPathSplice: ""
+            hostPathType: ""
+            isCreator: false
+            publicPvc: true
+            publicPvcName: gluster-result-volume-claim
+            size: ""
+            storageClass: ""
+        rayinput:
+            accessMode: ""
+            annotations: {}
+            asset_storage_name: host-path
+            asset_storage_type: host-path
+            emptyDir: false
+            emptyDirMedium: ""
+            enabled: false
+            hostPath: /home/ray/input
+            hostPathSplice: ""
+            hostPathType: DirectoryOrCreate
+            isCreator: ""
+            publicPvc: false
+            publicPvcName: ""
+            size: ""
+            storageClass: host-path
+    podAnnotations: {}
+    podSecurityContext: {}
+    readinessProbe:
+        content:
+            httpGet:
+                path: /healthz
+                port: 8050
+                scheme: HTTP
+        enabled: true
+        failureThreshold: 3
+        initialDelaySeconds: 5
+        periodSeconds: 15
+        successThreshold: 1
+        timeoutSeconds: 10
+    replicas: 1
+    restartPolicy: Always
+    secret: {}
+    secret_msg: []
+    securityContext:
+        privileged: false
+    service:
+        extra_usr_define_services:
+            vrs-service:
+                annotations: {}
+                clusterIP: ""
+                externalTrafficPolicy: null
+                healthCheckNodePort: null
+                ipFamilies: []
+                ipFamilyPolicy: ""
+                ports:
+                    port-0:
+                        containerPort: "8050"
+                        name: port-0
+                        nodePort: "8050"
+                        port: "8050"
+                        prometheus_scrape: true
+                        prometheus_scrape_interval: 10s
+                        prometheus_scrape_path: /metrics
+                        protocol: TCP
+                prometheus_scrape: true
+                service_domain: vrs-service
+                sessionAffinity: None
+                sessionAffinityConfig:
+                    clientIP:
+                        timeoutSeconds: 10800
+                type: NodePort
+        ports: []
+    serviceAccount: ""
+    serviceName: ""
+    sidecar_container_msg: []
+    special_env: {}
+    startupProbe: null
+    strategy: null
+    tianniu_node_affinity: null
+    tolerations: []
+    type: deployment
+    volumeMounts:
+        - mountPath: /home/ray/output
+          mountPropagation: HostToContainer
+          name: gluster-result-volume-claim
+          subPath: ""
+        - mountPath: /home/ray/input
+          mountPropagation: HostToContainer
+          name: rayinput
+          subPath: ""
+product_name: pcb-vrs
+total_ports:
+    vrs_service_port_0: "8050"
+version: 0.0.1-sq0kun-tmp

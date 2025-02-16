@@ -411,6 +411,27 @@ helm install mysql ./mysql
 kubectl exec -it mysql-0  -- mysql -u root -p
 ```
 
+# pcb-vrs
+
+## 目录挂载
+
+```shell
+mkdir /mnt/glusterfs/pcb-test
+mount -t glusterfs 172.16.114.51:/pcb-test /mnt/glusterfs/pcb-test
+```
+
+## 自动挂载
+
+将下面内容添加到 /etc/fstab 文件中。
+
+```shell
+172.16.114.51:/pcb-test /mnt/glusterfs/pcb-test glusterfs defaults 0 0
+```
+
+需要注意数据库的配置关系
+
+
+
 
 
 

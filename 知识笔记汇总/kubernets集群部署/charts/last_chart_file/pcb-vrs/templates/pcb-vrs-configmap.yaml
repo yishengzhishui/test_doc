@@ -1,0 +1,190 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+    labels:
+        app: '{{ template "pcb-vrs.pcb_vrs.fullname" . }}'
+        app.kubernetes.io/instance: '{{ $.Release.Name }}'
+        app.kubernetes.io/managed-by: '{{ $.Release.Service }}'
+        app.kubernetes.io/name: '{{ template "pcb-vrs.pcb_vrs.fullname" $ }}'
+        chart: '{{ .Chart.Name }}-{{ .Chart.Version }}'
+        helm.sh/chart: '{{ $.Chart.Name }}-{{ $.Chart.Version }}'
+        heritage: '{{ .Release.Service }}'
+        release: '{{ .Release.Name }}'
+    name: '{{ template "pcb-vrs.pcb_vrs.fullname" . }}'
+data:
+    config.toml: |
+        AppName = "vrs"
+        RunMode = "test" # debug/test/release
+        Version = "1.0.0"
+        DataDir = "/home/ray/output/vrs" # 数据存储根目录
+        ApisixGrpcAddr = "10.65.233.32:8473"
+        DeployAIQA = true
+        [HTTPServer]
+        # 监听地址，必填
+        Listen = "0.0.0.0:{{ .Values.out_depend_msg.VRS_SERVICE_NODE_PORT}}"
+        # 读超时时间（单位ms），选填，默认20s
+        ReadTimeout = 60000
+        # 写超时时间（单位ms），选填，默认10s
+        WriteTimeout = 40000
+        # Idle超时时间（单位ms），选填，默认10s
+        IdleTimeout = 10000 # 10s
+        # 最大header空间，选填，默认100k
+        MaxHeaderBytes = 100 # 100k
+        PprofEnable = true
+        [DB]
+        Driver = "MySQL" # 支持MySQL, SQLite, PostgreSQL, ClickHouse, 选填，默认为MySQL
+        #Example
+        Host = "{{ .Values.out_depend_msg.MYSQL_HOST}}"
+        #Example
+        #Port = 8806
+        Port = "{{ .Values.out_depend_msg.MYSQL_PORT}}"
+        #Example
+        #User = "root"
+        User= "{{ .Values.out_depend_msg.MYSQL_USER}}"
+        #Example
+        #Password = "ivip#BAiDu@2022"
+        Password = "{{ .Values.out_depend_msg.MYSQL_PASSWORD}}"
+        DB = "vrs_test"
+        #可拓展的dsn params 可参考 https://github.com/go-sql-driver/mysql/blob/master/dsn.go
+        DSNParams = "collation=utf8mb4_unicode_ci&parseTime=true&loc=Local&parseTime=True"
+        ConnMaxIdleTime = 100
+        ConnMaxLifeTime = 100
+        MaxIdleConns = 10
+        MaxOpenConns = 10
+
+        [Train]
+        #Example:
+        #Endpoint = "http://szth-ivip-qa-01.szth.baidu.com:8030"
+        Endpoint = "http://{{ .Values.out_depend_msg.WINDMILL_HOST}}:{{ .Values.out_depend_msg.WINDMILL_HOST_PORT}}"
+        AccessKey = "{ .Values.out_depend_msg.WINDMILL_ACCESS_KEY}"
+        SecretKey = "{ .Values.out_depend_msg.WINDMILL_SECRET_KEY}"
+
+        [IAM]
+        Endpoint = "{{ .Values.out_depend_msg.IDAAS_HOST }}"
+        Version = "/v3"
+        UserName = "iot"
+        Password = "o0JrWtSF63vWod0GlLSbwDqDN651eAa7"
+        Domain = "Default"
+        AppId = "{{ .Values.out_depend_msg.APP_ID }}"
+        ClientId = "{{ .Values.out_depend_msg.CLIENT_ID }}"
+        ClientSecret = "{{ .Values.out_depend_msg.CLIENT_SECRET }}"
+        ProjectId = "{{ .Values.out_depend_msg.PROJECT_ID }}"
+        PsId = "{{ .Values.out_depend_msg.PS_ID }}"
+        SessionUrlFuzzyExclude = [
+            "/v2/",
+        ]
+        UrlFuzzyExclude = [
+            "/pprof",
+            "/v2",
+            "/v1",
+        ]
+        UrlExactExclude = [
+            "/v1/swagger",
+            "/pprof",
+        ]
+        Enable = {{ .Values.out_depend_msg.ENABLE_IDAAS }}
+        RedirectLoginURL = "{{ .Values.out_depend_msg.REDIRECT_URL }}"
+        CookieDomain = "{{ .Values.out_depend_msg.COOKIE_DOMAIN }}"
+
+        [Ray]
+        Endpoint = "http://ray-cluster-kuberay-head-svc:8265"
+        Timeout = 10000 # 单位ms
+
+        [Cron]
+        ImageSaveSpec = "53 * * * *"
+        StatisticSpec = "40 20,23 * * *"
+        CleanSpec = "0 19 * * *"
+        DataRetentionPeriod = {{ .Values.out_depend_msg.VRS_DATA_RETENTION_PERIOD }} # 数据保留时长，单位：天
+
+        [IVIP]
+        Endpoint = "http://platform-service:{{ .Values.out_depend_msg.ServerListenPort}}"
+        Timeout = 30000 # 单位ms
+
+        [CloudIndustry]
+        AccessKey = "test-ak"
+        SecretKey = "test-sk"
+        Endpoint = "http://cloud-industry-service:8030"
+
+        [Reflow]
+        OverkillRule = "rf-hpcmevn1"
+        LeakRule = "rf-w-cinyad"
+        ManualOKRule = "rf-rzt0i26n"
+        ManualNGRule = "rf---cfv-ik"
+        [FakeAuth]
+        Enable = false
+        OrgID = "test-org-id"
+        UserID = "test-user-id"
+        UserName = "pcbvrs"
+        UserRole = "admin"
+        [Windmill]
+        AccessKey = "8c66af93b7c740ff82a22a854720eb26"
+        SecretKey = "63cd4997fa4845ffa20ac64aac651334"
+        Endpoint = "10.65.233.36:{{ .Values.out_depend_msg.WINDMILL_HOST_PORT }}"
+        [Monitor]
+        MonitorRecent = 3600 # 单位s
+        JobMaxSurvivalTime = 3600 # 单位s
+    hosts: 10.65.233.32 10.65.233.32
+    telegraf.conf: |4
+        [global_tags]
+        {{- if $.Values.pcb_vrs.logExporter.enable }}
+        [agent]
+          interval = "{{ .Values.pcb_vrs.logExporter.telegraf.agent.interval }}"
+          metric_batch_size = {{ .Values.pcb_vrs.logExporter.telegraf.agent.metric_batch_size }}
+          metric_buffer_limit = {{ .Values.pcb_vrs.logExporter.telegraf.agent.metric_buffer_limit }}
+          collection_jitter = "0s"
+          flush_interval = "{{ .Values.pcb_vrs.logExporter.telegraf.agent.flush_interval }}"
+          flush_jitter = "0s"
+          precision = "1s"
+          debug = {{ .Values.pcb_vrs.logExporter.telegraf.agent.debug }}
+          hostname = ""
+          omit_hostname = false
+
+        [[outputs.prometheus_client]]
+          listen = ":{{ .Values.pcb_vrs.logExporter.port }}"
+
+        {{- range $index_input, $input := .Values.pcb_vrs.logExporter.telegraf.input }}
+        [[inputs.logparser]]
+          files = [
+                    {{- range $index, $file := $input.logFiles }}
+                    {{- if $index }},{{- end}}
+                     "{{ $file }}"
+                    {{- end }}
+                  ]
+          from_beginning = false
+          [inputs.logparser.grok]
+            patterns = [
+                        {{- range $index, $log := $input.logs }}
+                        {{- if $index }},{{- end}}
+                        ''{{ $log }}''
+                        {{- end }}
+                       ]
+            measurement = "LogMeasurement"
+            #custom_pattern_files = []
+            custom_patterns = '''
+                {{- range $input.custom_patterns }}
+                {{ . }}
+                {{- end }}
+            '''
+        {{- end}}
+
+        [[aggregators.basicstats]]
+          namepass = ["LogMeasurement"]
+          period = "{{ .Values.pcb_vrs.logExporter.telegraf.output.period }}"
+          drop_original = false
+          stats = ["count", "min", "max", "mean", "stdev", "s2", "sum"]
+
+        [[aggregators.histogram]]
+          drop_original = false
+          reset = true
+          [[aggregators.histogram.config]]
+            buckets = {{ .Values.pcb_vrs.logExporter.telegraf.output.buckets }}
+            measurement_name = "LogMeasurement"
+            fields = [{{ range $index, $value := .Values.pcb_vrs.logExporter.telegraf.output.histogramFields }}{{if $index}}, {{end}}"{{$value}}"{{end}}]
+
+        [[aggregators.valuecounter]]
+          namepass = ["LogMeasurement"]
+          period = "{{ .Values.pcb_vrs.logExporter.telegraf.output.period }}"
+          drop_original = false
+          fields = [{{ range $index, $value :=  .Values.pcb_vrs.logExporter.telegraf.output.valuecounterFields }}{{if $index}}, {{end}}"{{$value}}"{{end}}]
+        {{- end }}
+binaryData: {}

@@ -1,0 +1,11 @@
+apiVersion: v1
+appVersion: 0.0.1-sq0kuz-tmp
+description: baidu pcb-vrs.
+home: http://icode.baidu.com/products/det-op/repos
+maintainers:
+- email: det-op@baidu.com
+  name: det-op
+name: pcb-vrs
+sources:
+- http://icode.baidu.com/products/det-op/repos
+version: 0.0.1-sq0kuz-tmp
