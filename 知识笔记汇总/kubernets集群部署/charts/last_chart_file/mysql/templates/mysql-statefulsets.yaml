@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  serviceName: {{ .Release.Name }}
+  replicas: {{ .Values.mysql.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: role
+                operator: In
+                values:
+                - ivip-master
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: {{ .Release.Name }}
+        image: "{{ .Values.image.mysqlimages }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+        resources:
+{{ toYaml .Values.mysql.resources | indent 10 }}
+#        command: ['sh', '-c', '/entrypoint.sh' ]
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-password
+              key: mysql-root-password
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-password
+              key: mysql-password
+        - name: MYSQL_USER #默认有root用户 这里可额外指定一个用户、
+          value: {{ default "" .Values.mysql.mysqlUser | quote }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: {{ .Release.Name }}
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.service.port }}
+          initialDelaySeconds: {{ .Values.mysql.readinitialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+{{- if .Values.mysql.livenessroot  }}
+            - mysqladmin ping -u root -p${MYSQL_ROOT_PASSWORD} 
+{{- else }}
+            - mysqladmin ping -u ${MYSQL_USER} -p${MYSQL_PASSWORD}
+{{- end }}
+          initialDelaySeconds: {{ .Values.mysql.liveinitialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: {{ .Release.Name }}-data
+        - name: {{ .Release.Name }}-conf
+          mountPath: /etc/mysql/my.cnf
+          subPath: my.cnf
+      volumes:
+      - name: {{ .Release.Name }}-conf
+        configMap:
+          name: {{ .Release.Name }}-cnf
+
+      - name: {{ .Release.Name }}-data
+{{- if .Values.persistence.enabled  }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Release.Name }}-data
+        labels:
+         app: {{ .Release.Name }}
+      spec:
+        accessModes:
+          - {{ .Values.persistence.accessMode | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+        storageClassName: "{{ .Values.persistence.storageClass }}"
+{{- else }}
+        hostPath:
+          path: {{ .Values.hostPath.path }}
+{{- end }}

@@ -1,0 +1,49 @@
+{{- if .Values.mysqlexporter.enabled  }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prometheus-mysql-exporter
+    chart: prometheus-mysql-exporter-0.6.0
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.mysql.replicaCountexporter }}
+  selector:
+    matchLabels:
+      app: prometheus-mysql-exporter
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: prometheus-mysql-exporter
+        release: {{ .Release.Name }}
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9104"
+        prometheus.io/scrape: "true"
+        
+    spec:
+      containers:
+        - name: {{ .Release.Name }}-exporter
+          image: "{{ .Values.mysqlexporter.image }}:{{ .Values.mysqlexporter.tags }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          nodeSelector: {{ .Values.mysql.nodeSelector }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-exporter
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.internalPort }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.internalPort }}
+          resources:
+{{ toYaml .Values.mysqlexporter.resources | indent 12 }}
+{{- end }}

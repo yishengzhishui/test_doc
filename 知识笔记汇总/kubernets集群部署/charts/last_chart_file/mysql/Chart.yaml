@@ -1,0 +1,7 @@
+apiVersion: v1
+appVersion: 0.0.1-s30l4n-tmp
+description: Helm chart for Kubernetes
+name: mysql
+sources:
+- http://icode.baidu.com/repos/baidu/det-op/common-charts/tree/master:mysql/mysql-5.7.30
+version: 0.0.1-s30l4n-tmp

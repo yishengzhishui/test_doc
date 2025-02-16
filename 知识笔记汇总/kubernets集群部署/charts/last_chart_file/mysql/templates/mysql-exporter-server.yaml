@@ -1,0 +1,21 @@
+{{- if .Values.mysqlexporter.enabled  }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-exporter
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prometheus-mysql-exporter
+    chart: prometheus-mysql-exporter-0.6.0
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.externalPort }}
+      targetPort: {{ .Values.service.internalPort }}
+      protocol: TCP
+      name: {{ .Values.service.name }}
+  selector:
+    release:  {{ .Release.Name }}
+{{- end }}

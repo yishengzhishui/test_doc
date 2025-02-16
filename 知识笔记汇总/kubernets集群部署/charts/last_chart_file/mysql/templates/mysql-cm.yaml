@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-cnf
+  namespace: {{ .Release.Namespace }}
+data:
+  my.cnf: |
+    [client]
+    port =  {{ .Values.service.port }}
+    socket = /var/lib/mysql/mysql.sock
+    default-character-set = utf8mb4
+    
+    [mysql]
+    prompt="MySQL [\d]> "
+    no-auto-rehash
+    
+    [mysqld]
+    skip-name-resolve
+    explicit_defaults_for_timestamp
+    basedir=/var/lib/mysql
+    port = {{ .Values.service.port }}
+    auto_increment_offset=1
+    auto_increment_increment=2
+    # server 唯一标识
+    server-id= 1
+
+    max_allowed_packet=64M
+    bind-address=0.0.0.0
+    socket=/var/lib/mysql/mysql.sock
+    pid-file=/var/lib/mysql/mysqld.pid
+    #error log
+    log-warnings             = 1
+    log-error                = /var/lib/mysql/mysql.err
+    #slow query log
+    long-query-time          = 1
+    slow_query_log           = 1
+    slow_query_log_file      = /var/lib/mysql/slow.log
+    #general query log
+    general_log              = 0
+    general_log_file         = /var/lib/mysql/mysql.log
+    #lc-messages
+    lc-messages = en_US
+    lc-messages-dir = /usr/share/mysql/
+
+    # max binlog keeps days
+    expire_logs_days         = 7
+    binlog_cache_size        = 1M
+
+    character-set-server=UTF8
+    collation-server=utf8_general_ci
+    innodb_buffer_pool_size  = 20G
+
+    max_connections          = 3000
+    max_connect_errors       = 10000
+    thread_stack             = 192K
+    thread_cache_size        = 20
+    query_cache_type         = 1
+    query_cache_size         = 1G
+
+    key_buffer_size                 = 256M
+    sort_buffer_size                = 2M
+    read_buffer_size                = 2M
+    join_buffer_size                = 8M
+    read_rnd_buffer_size            = 8M
+    bulk_insert_buffer_size         = 64M
+    myisam_sort_buffer_size         = 64M
+    myisam_max_sort_file_size       = 10G
+    myisam_repair_threads           = 1
+
+    innodb_file_per_table
+    #innodb_additional_mem_pool_size = 100M
+    innodb_data_home_dir            = /var/lib/mysql/
+    innodb_data_file_path           = ibdata1:1G:autoextend
+    #innodb_file_io_threads          = 4
+    innodb_read_io_threads          = 12
+    innodb_write_io_threads         = 12
+    innodb_thread_concurrency       = 16
+    innodb_flush_log_at_trx_commit  = 1
+
+    innodb_log_buffer_size          = 8M
+    innodb_log_file_size            = 1900M
+    innodb_log_files_in_group       = 2
+    innodb_max_dirty_pages_pct      = 90
+    innodb_lock_wait_timeout        = 50
+
+    #binlog文件名，自定义
+    log_bin=mysql-bin
+    #binlog文件的索引文件，默认为log-bin文件名加后缀.index
+    log_bin_index=mysql-bin.index
+    #binary log格式: STATEMENT, ROW, MIXED。默认为STATEMENT
+    binlog_format=mixed
+    max_binlog_size          = 1G
+    sync-binlog              = 1
+
+    relay-log                = relay-log
+    relay-log-index          = relay-log.index
+    max_relay_log_size       = 1G
+
+    #slave
+    slave-parallel-type=LOGICAL_CLOCK
+    slave-parallel-workers=16
+    master_info_repository=TABLE
+    relay_log_info_repository=TABLE
+    relay_log_recovery=ON
+
+
+
+    [mysqldump]
+    quick
+    max_allowed_packet              = 64M

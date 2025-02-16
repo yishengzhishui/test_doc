@@ -1,0 +1,19 @@
+{{- if .Values.mysqlexporter.enabled  }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: prometheus-mysql-exporter
+    chart: prometheus-mysql-exporter-0.6.0
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+  endpoints:
+    - path: /metrics
+      port: {{ .Values.service.name }}
+{{- end }}

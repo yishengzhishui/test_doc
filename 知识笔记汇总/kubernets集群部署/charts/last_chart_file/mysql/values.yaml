@@ -1,0 +1,53 @@
+service:
+  name: mysql-exporter
+  nodePort: 8806
+  port: 8806
+  externalPort: 9104
+  internalPort: 9104
+image:
+  mysqlimages: iregistry.baidu-int.com/acg-det/mysql
+  tag: 5.7.30
+  pullPolicy: IfNotPresent
+mysql:
+  replicaCount: 1
+  readinitialDelaySeconds: 60
+  liveinitialDelaySeconds: 120
+  resources:
+    requests:
+      cpu: 1
+      memory: 4Gi
+  mysqlRootPassword: ivip#BAiDu@2022
+  livenessroot: true
+  mysqlUser: user
+  mysqlUserPassword: userbaidu@123
+mysqlexporter:
+  enabled: false
+  image: iregistry.baidu-int.com/acg-det/mysqld-exporter
+  tags: v0.12.1
+  mysqlUserexporter: root
+  db: ''
+  protocol: ''
+  param: ''
+  replicaCountexporter: '1'
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+hostPath:
+  path: /home/data/mysql-poc
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 300Gi
+  annotations: {}
+  storageClass: local-path
+livenessProbe:
+  periodSeconds: 5
+  timeoutSeconds: 20
+  successThreshold: 1
+  failureThreshold: 3
+readinessProbe:
+  periodSeconds: 5
+  timeoutSeconds: 20
+  successThreshold: 3
+  failureThreshold: 1
