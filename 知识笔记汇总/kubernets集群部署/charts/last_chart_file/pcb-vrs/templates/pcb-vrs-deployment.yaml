@@ -137,6 +137,10 @@ spec:
       - name: {{ template "pcb-vrs.pcb_vrs.fullname" $ }}{{with .name}}-{{ . }}{{end}}
         image: "{{ .Values.pcb_vrs.image }}:{{ .Values.pcb_vrs.imageTag }}"
         imagePullPolicy: {{ .Values.pcb_vrs.imagePullPolicy | quote }}
+        env:
+          # 添加时区设置
+          - name: TZ
+            value: "Asia/Shanghai"  # 设置时区为上海
         {{- with .Values.pcb_vrs.lifecycle }}
         lifecycle:
 {{ toYaml . | indent 10 }}
@@ -352,7 +356,7 @@ spec:
           medium: {{ $volume_msg.emptyDirMedium }}
           {{- end }}
       {{- else }}
-        hostPath: 
+        hostPath:
           path: {{ printf "%s%s" $volume_msg.hostPath $volume_msg.hostPathSplice }}
           {{- with $volume_msg.hostPathType }}
           type: {{ . }}
