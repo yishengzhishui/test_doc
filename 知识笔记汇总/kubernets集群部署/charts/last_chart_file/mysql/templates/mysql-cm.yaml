@@ -9,11 +9,11 @@ data:
     port =  {{ .Values.service.port }}
     socket = /var/lib/mysql/mysql.sock
     default-character-set = utf8mb4
-    
+
     [mysql]
     prompt="MySQL [\d]> "
     no-auto-rehash
-    
+
     [mysqld]
     skip-name-resolve
     explicit_defaults_for_timestamp
@@ -23,6 +23,11 @@ data:
     auto_increment_increment=2
     # server 唯一标识
     server-id= 1
+
+    # 设置时区
+    # 或者使用:  default-time-zone = '+08:00'  # 设置时区为上海时间
+    default-time-zone = 'Asia/Shanghai'
+
 
     max_allowed_packet=64M
     bind-address=0.0.0.0
