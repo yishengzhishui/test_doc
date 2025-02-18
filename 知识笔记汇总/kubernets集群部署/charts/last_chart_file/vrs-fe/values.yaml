@@ -1,0 +1,135 @@
+out_depend_msg: {}
+product_name: vrs-fe
+total_ports:
+    vrs_fe_service_port_0: "8052"
+version: 0.0.5-sqkinc-tmp
+vrs_fe:
+    affinity: null
+    annotations:
+        reloader.stakater.com/auto: "false"
+    args: []
+    chart_config_volumes:
+        configMaps:
+            conf:
+                name: conf
+        secrets: {}
+    cluster_existing_volumes:
+        configMaps: {}
+        secrets: {}
+    command: []
+    config_msg:
+        - config_name: pcb-fe.conf
+          mountPath: /etc/nginx/conf.d/pcb-fe.conf
+          subPath: ""
+          volName: conf
+        - config_name: nginx.conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: ""
+          volName: conf
+    cronjob_msg: {}
+    dnsPolicy: ClusterFirst
+    enable: true
+    hostAliases: null
+    hostNetwork: false
+    image: pcb-vrs-fe
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets:
+        auths: {}
+    imageTag: "2025021806"
+    init_container_msg: []
+    job_msg: {}
+    labels: {}
+    livenessProbe:
+        content:
+            httpGet:
+                path: /
+                port: 8052
+                scheme: HTTP
+        enabled: true
+        failureThreshold: 3
+        initialDelaySeconds: 5
+        periodSeconds: 15
+        successThreshold: 1
+        timeoutSeconds: 10
+    logExporter:
+        enable: false
+    name: vrs-fe
+    nodeSelector: {}
+    persistence:
+        gluster-result-volume-claim:
+            accessMode: ""
+            annotations: {}
+            asset_storage_name: ""
+            asset_storage_type: ""
+            emptyDir: false
+            emptyDirMedium: ""
+            enabled: true
+            hostPath: /
+            hostPathSplice: ""
+            hostPathType: ""
+            isCreator: false
+            publicPvc: true
+            publicPvcName: gluster-result-volume-claim
+            size: ""
+            storageClass: ""
+    podAnnotations: {}
+    podSecurityContext: {}
+    readinessProbe:
+        content:
+            httpGet:
+                path: /
+                port: 8052
+                scheme: HTTP
+        enabled: true
+        failureThreshold: 3
+        initialDelaySeconds: 5
+        periodSeconds: 15
+        successThreshold: 1
+        timeoutSeconds: 10
+    replicas: 1
+    restartPolicy: Always
+    secret: {}
+    secret_msg: []
+    securityContext:
+        privileged: false
+    service:
+        extra_usr_define_services:
+            vrs-fe-service:
+                annotations: {}
+                clusterIP: ""
+                externalTrafficPolicy: null
+                healthCheckNodePort: null
+                ipFamilies: []
+                ipFamilyPolicy: ""
+                ports:
+                    port-0:
+                        containerPort: "8052"
+                        name: port-0
+                        nodePort: "8052"
+                        port: "8052"
+                        prometheus_scrape: false
+                        prometheus_scrape_interval: ""
+                        prometheus_scrape_path: /metrics
+                        protocol: TCP
+                prometheus_scrape: false
+                service_domain: vrs-fe-service
+                sessionAffinity: None
+                sessionAffinityConfig:
+                    clientIP:
+                        timeoutSeconds: 10800
+                type: NodePort
+        ports: []
+    serviceAccount: ""
+    serviceName: ""
+    sidecar_container_msg: []
+    special_env: {}
+    startupProbe: null
+    strategy: null
+    tianniu_node_affinity: null
+    tolerations: []
+    type: deployment
+    volumeMounts:
+        - mountPath: /home/ray/output
+          mountPropagation: None
+          name: gluster-result-volume-claim
+          subPath: ""

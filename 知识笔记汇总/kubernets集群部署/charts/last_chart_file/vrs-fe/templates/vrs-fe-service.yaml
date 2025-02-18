@@ -1,0 +1,160 @@
+
+{{- if .Values.vrs_fe.enable }}
+{{- if and .Values.vrs_fe.service.ports (not .Values.vrs_fe.service.extra_usr_define_services) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "vrs-fe.vrs_fe.fullname" . }}
+  labels:
+    app: {{ template "vrs-fe.vrs_fe.fullname" . }}
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    app.kubernetes.io/managed-by: '{{ $.Release.Service }}'
+    app.kubernetes.io/instance: '{{ $.Release.Name }}'
+    helm.sh/chart: '{{ $.Chart.Name }}-{{ $.Chart.Version }}'
+    app.kubernetes.io/name: '{{ template "vrs-fe.vrs_fe.fullname" $ }}'
+
+  annotations:
+    {{- if (or .Values.vrs_fe.logExporter.enable .Values.vrs_fe.service.prometheus_scrape) }}
+    prometheus.io/scrape: "true"
+    {{- end }}
+    {{- if .Values.vrs_fe.service.annotations }}
+    {{- range $key, $val := .Values.vrs_fe.service.annotations }}
+    {{$key}}: {{$val}}
+    {{- end }}
+    {{- end }}
+spec:
+  {{- if ne "" .Values.vrs_fe.service.clusterIP }}
+  clusterIP: {{ .Values.vrs_fe.service.clusterIP }}
+  {{- end }}
+  type: {{ .Values.vrs_fe.service.type }}
+  {{- with .Values.vrs_fe.service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+  {{- end }}
+  {{- with .Values.vrs_fe.service.sessionAffinityConfig }}
+  sessionAffinityConfig:
+{{ toYaml . | indent 4}}
+  {{- end }}
+  {{- with .Values.vrs_fe.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ . }}
+  {{- end }}
+  {{- with .Values.vrs_fe.service.ipFamilies }}
+  ipFamilies:
+    {{- range $index, $value := $.Values.vrs_fe.service.ipFamilies }}
+    - {{ $value }}
+    {{- end }}
+  {{- end }}
+  ports:
+  {{- range $key, $val := .Values.vrs_fe.service.ports }}
+  - name: {{ $val.name }}
+  {{- if $val.port }}
+    port: {{ $val.port }}
+  {{- else if $val.containerPort }}
+    port: {{ $val.containerPort }}
+  {{- end }}
+  {{- with $val.appProtocol}}
+    appProtocol: {{.}}
+  {{- end }}
+  {{- with $val.nodePort }}
+    nodePort: {{.}}
+  {{- end }}
+  {{- with $val.protocol }}
+    protocol: {{.}}
+  {{- end }}
+  {{- if $val.containerPort }}
+    targetPort: {{ $val.containerPort }}
+  {{- else if $val.port }}
+    targetPort: {{ $val.port }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.vrs_fe.logExporter.enable }}
+  - name: log-metric
+    port: {{ $.Values.vrs_fe.logExporter.port }}
+  {{- end }}
+  selector:
+    app: {{ template "vrs-fe.vrs_fe.fullname" . }}
+{{- end}}
+{{- range $service_name, $service := .Values.vrs_fe.service.extra_usr_define_services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{$service.service_domain}}
+  labels:
+    app: {{ template "vrs-fe.vrs_fe.fullname" $ }}
+    chart: "{{ $.Chart.Name }}-{{ $.Chart.Version }}"
+    release: "{{ $.Release.Name }}"
+    heritage: "{{ $.Release.Service }}"
+    app.kubernetes.io/managed-by: '{{ $.Release.Service }}'
+    app.kubernetes.io/instance: '{{ $.Release.Name }}'
+    helm.sh/chart: '{{ $.Chart.Name }}-{{ $.Chart.Version }}'
+    app.kubernetes.io/name: '{{ template "vrs-fe.vrs_fe.fullname" $ }}'
+
+  annotations:
+  {{- if (or $.Values.vrs_fe.logExporter.enable $service.prometheus_scrape) }}
+    prometheus.io/scrape: "true"
+  {{- end }}
+  {{- with $service.annotations }}
+  {{- range $key, $val := . }}
+    {{$key}}: {{$val}}
+  {{- end }}
+  {{- end }}
+spec:
+  {{- if ne "" $service.clusterIP }}
+  clusterIP: {{ $service.clusterIP }}
+  {{- end }}
+  type: {{ $service.type }}
+  {{- with $service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ . }}
+  {{- end }}
+  {{- with $service.healthCheckNodePort }}
+  healthCheckNodePort: {{ . }}
+  {{- end }}
+  {{- with $service.sessionAffinity }}
+  sessionAffinity: {{ . }}
+  {{- end }}
+  {{- with $service.sessionAffinityConfig }}
+  sessionAffinityConfig:
+{{ toYaml . | indent 4}}
+  {{- end }}
+  {{- with $service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ . }}
+  {{- end }}
+  {{- with $service.ipFamilies }}
+  ipFamilies:
+    {{- range $index, $value := $service.ipFamilies }}
+    - {{ $value }}
+    {{- end }}
+  {{- end }}
+  ports:
+  {{- range $key, $val := $service.ports }}
+  - name: {{ $val.name }}
+  {{- if $val.port }}
+    port: {{ $val.port }}
+  {{- else if $val.containerPort }}
+    port: {{ $val.containerPort }}
+  {{- end }}
+  {{- with $val.appProtocol}}
+    appProtocol: {{.}}
+  {{- end }}
+  {{- with $val.nodePort }}
+    nodePort: {{.}}
+  {{- end }}
+  {{- with $val.protocol }}
+    protocol: {{.}}
+  {{- end }}
+  {{- if $val.containerPort }}
+    targetPort: {{ $val.containerPort }}
+  {{- else if $val.port }}
+    targetPort: {{ $val.port }}
+  {{- end }}
+  {{- end }}
+  {{- if $.Values.vrs_fe.logExporter.enable }}
+  - name: log-metric
+    port: {{ $.Values.vrs_fe.logExporter.port }}
+  {{- end }}
+  selector:
+    app: {{ template "vrs-fe.vrs_fe.fullname" $ }}
+{{- end }}
+{{- end }}

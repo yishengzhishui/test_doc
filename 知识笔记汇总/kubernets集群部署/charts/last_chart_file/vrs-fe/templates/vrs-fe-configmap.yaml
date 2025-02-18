@@ -1,0 +1,180 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+    labels:
+        app: '{{ template "vrs-fe.vrs_fe.fullname" . }}'
+        app.kubernetes.io/instance: '{{ $.Release.Name }}'
+        app.kubernetes.io/managed-by: '{{ $.Release.Service }}'
+        app.kubernetes.io/name: '{{ template "vrs-fe.vrs_fe.fullname" $ }}'
+        chart: '{{ .Chart.Name }}-{{ .Chart.Version }}'
+        helm.sh/chart: '{{ $.Chart.Name }}-{{ $.Chart.Version }}'
+        heritage: '{{ .Release.Service }}'
+        release: '{{ .Release.Name }}'
+    name: '{{ template "vrs-fe.vrs_fe.fullname" . }}'
+data:
+    nginx.conf: |-
+        user  root;
+        worker_processes  8;
+
+        error_log  /var/log/nginx/error2.log warn;
+        pid        /var/run/nginx.pid;
+
+
+        events {
+            worker_connections  1024;
+        }
+
+
+        http {
+            include       /etc/nginx/mime.types;
+            default_type  application/octet-stream;
+            log_format json_analytics escape=json '{'
+                            '"msec": "$msec", ' # request unixtime in seconds with a milliseconds resolution
+                            '"request_id": "$request_id", ' # the unique request id
+                            '"request_length": "$request_length", ' # request length (including headers and body)
+                            '"remote_addr": "$remote_addr", ' # client IP
+                            '"remote_user": "$remote_user", ' # client HTTP username
+                            '"remote_port": "$remote_port", ' # client port
+                            '"time_local": "$time_local", '
+                            '"time_iso8601": "$time_iso8601", ' # local time in the ISO 8601 standard format
+                            '"request_uri": "$request_uri", ' # full path and arguments if the request
+                            '"args": "$args", ' # args
+                            '"status": "$status", ' # response status code
+                            '"body_bytes_sent": "$body_bytes_sent", ' # the number of body bytes exclude headers sent to a client
+                            '"bytes_sent": "$bytes_sent", ' # the number of bytes sent to a client
+                            '"http_host": "$http_host", ' # the request Host: header
+                            '"server_name": "$server_name", ' # the name of the vhost serving the request
+                            '"request_time": "$request_time", ' # request processing time in seconds with msec resolution
+                            '"scheme": "$scheme", ' # http or https
+                            '"request_method": "$request_method"'
+                            '}';
+
+            access_log  /var/log/nginx/access2.log  json_analytics;
+
+            log_format main '$remote_addr - $remote_user [$time_local] "$host:$server_port" "$request" '
+                        '$status $body_bytes_sent "$request_body" "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for" "$request_time"';
+            access_log  /var/log/nginx/access2.log  main;  # 日志文件位置
+            access_log  /dev/stdout main;  # 标准输出
+
+            sendfile        on;
+            #tcp_nopush     on;
+
+            keepalive_timeout  65;
+
+            #gzip  on;
+
+            include /etc/nginx/conf.d/*.conf;
+        }
+    pcb-fe.conf: |
+        server {
+            # 前端服务端口
+            listen 8052;
+            server_name localhost;
+
+            location /resource/home/ray/output {
+                alias /home/ray/output;
+                add_header Cache-Control max-age=3600;
+                add_header Cache-Control public;
+            }
+
+            location /v1/usersettings {
+                    proxy_pass http://windmill-usersetting-service.ivip:8080;
+                    proxy_connect_timeout 6000;
+                    proxy_read_timeout 6000;
+                    client_max_body_size 2000m;
+            }
+
+            # vrs
+            location /v1 {
+                    proxy_pass http://vrs-service:8050;
+                    proxy_connect_timeout 6000;
+                    proxy_read_timeout 6000;
+                    client_max_body_size 2000m;
+            }
+
+             location /api/windmill/v1 {
+                    proxy_pass http://10.65.233.36:8340;
+                    proxy_connect_timeout 6000;
+                    proxy_read_timeout 6000;
+                    client_max_body_size 2000m;
+            }
+
+             location /nginx_status {
+                    stub_status on;
+                    access_log off;
+                    allow 127.0.0.1;
+                    #deny all;
+                }
+            location / {
+                root /app/pcb-fe;
+                index index.html;
+                try_files $uri /index.html;
+            }
+
+
+        }
+    telegraf.conf: |4
+        [global_tags]
+        {{- if $.Values.vrs_fe.logExporter.enable }}
+        [agent]
+          interval = "{{ .Values.vrs_fe.logExporter.telegraf.agent.interval }}"
+          metric_batch_size = {{ .Values.vrs_fe.logExporter.telegraf.agent.metric_batch_size }}
+          metric_buffer_limit = {{ .Values.vrs_fe.logExporter.telegraf.agent.metric_buffer_limit }}
+          collection_jitter = "0s"
+          flush_interval = "{{ .Values.vrs_fe.logExporter.telegraf.agent.flush_interval }}"
+          flush_jitter = "0s"
+          precision = "1s"
+          debug = {{ .Values.vrs_fe.logExporter.telegraf.agent.debug }}
+          hostname = ""
+          omit_hostname = false
+
+        [[outputs.prometheus_client]]
+          listen = ":{{ .Values.vrs_fe.logExporter.port }}"
+
+        {{- range $index_input, $input := .Values.vrs_fe.logExporter.telegraf.input }}
+        [[inputs.logparser]]
+          files = [
+                    {{- range $index, $file := $input.logFiles }}
+                    {{- if $index }},{{- end}}
+                     "{{ $file }}"
+                    {{- end }}
+                  ]
+          from_beginning = false
+          [inputs.logparser.grok]
+            patterns = [
+                        {{- range $index, $log := $input.logs }}
+                        {{- if $index }},{{- end}}
+                        ''{{ $log }}''
+                        {{- end }}
+                       ]
+            measurement = "LogMeasurement"
+            #custom_pattern_files = []
+            custom_patterns = '''
+                {{- range $input.custom_patterns }}
+                {{ . }}
+                {{- end }}
+            '''
+        {{- end}}
+
+        [[aggregators.basicstats]]
+          namepass = ["LogMeasurement"]
+          period = "{{ .Values.vrs_fe.logExporter.telegraf.output.period }}"
+          drop_original = false
+          stats = ["count", "min", "max", "mean", "stdev", "s2", "sum"]
+
+        [[aggregators.histogram]]
+          drop_original = false
+          reset = true
+          [[aggregators.histogram.config]]
+            buckets = {{ .Values.vrs_fe.logExporter.telegraf.output.buckets }}
+            measurement_name = "LogMeasurement"
+            fields = [{{ range $index, $value := .Values.vrs_fe.logExporter.telegraf.output.histogramFields }}{{if $index}}, {{end}}"{{$value}}"{{end}}]
+
+        [[aggregators.valuecounter]]
+          namepass = ["LogMeasurement"]
+          period = "{{ .Values.vrs_fe.logExporter.telegraf.output.period }}"
+          drop_original = false
+          fields = [{{ range $index, $value :=  .Values.vrs_fe.logExporter.telegraf.output.valuecounterFields }}{{if $index}}, {{end}}"{{$value}}"{{end}}]
+        {{- end }}
+binaryData: {}
