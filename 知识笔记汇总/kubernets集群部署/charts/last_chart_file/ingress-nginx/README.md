@@ -1,3 +1,6 @@
+# kubeVersion: '>=1.19.0-0'
+注意：当前chart仅支持kubeVersion: '>=1.19.0-0'
+
 # ingress-nginx
 
 [ingress-nginx](https://github.com/kubernetes/ingress-nginx) Ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer
@@ -69,7 +72,7 @@ Note that there are some different and upgraded configurations between the two c
 
 ## Configuration
 
-See [Customizing the Chart Before Installing](https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing). To see all configurable options with detailed comments, visit the chart's [values.yaml](./values.yaml), or run these configuration commands:
+See [Customizing the Chart Before Installing](https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing). To see all configurable options with detailed comments, visit the chart's [values.yaml](values.yaml), or run these configuration commands:
 
 ```console
 helm show values ingress-nginx/ingress-nginx
