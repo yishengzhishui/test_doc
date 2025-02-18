@@ -430,8 +430,12 @@ mount -t glusterfs 172.16.114.51:/pcb-test /mnt/glusterfs/pcb-test
 
 需要注意数据库的配置关系
 
-
-
+# ingress-controller 
+```shell
+docker pull --platform linux/amd64 k8s.gcr.io/ingress-nginx/controller:v1.0.0
+docker pull --platform linux/amd64 k8s.gcr.io/ingress-nginx/kube-webhook-certgen:v1.0
+docker pull --platform linux/amd64 k8s.gcr.io/defaultbackend-amd64:1.5
+```
 
 
 
