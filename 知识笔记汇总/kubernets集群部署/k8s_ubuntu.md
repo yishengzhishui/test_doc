@@ -438,6 +438,37 @@ docker pull --platform linux/amd64 k8s.gcr.io/defaultbackend-amd64:1.5
 ```
 
 
+ingress file
+ray-cluster ingress
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+   name: ray-cluster-ingress
+   namespace: ivip
+   annotations:
+      kubernetes.io/ingress.class: nginx-pcb
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+   rules:
+      - http:
+           paths:
+              - path: /raycluster(/|$)(.*)
+                pathType: ImplementationSpecific
+                backend:
+                   service:
+                      name: ray-cluster-kuberay-head-svc
+                      port:
+                         number: 8265
+              - path: /static(.*)
+                pathType: ImplementationSpecific
+                backend:
+                   service:
+                      name: ray-cluster-kuberay-head-svc
+                      port:
+                         number: 8265
+
+```
 
 
 
